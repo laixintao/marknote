@@ -6,7 +6,7 @@ CONFIGURATION ?= release
 REMOTE ?= origin
 export CONFIGURATION VERSION REMOTE SIGNING_IDENTITY NOTARY_PROFILE
 
-.PHONY: help build run test smoke check verify package screenshots version release release-check
+.PHONY: help build run test smoke check verify package installer screenshots version release release-check
 help:
 	@printf '%s\n' 'Marknote · 墨笺' '' \
 	  'make build                 Build dist/墨笺.app (release by default)' \
@@ -15,7 +15,8 @@ help:
 	  'make smoke                 Run native AppKit / WebKit integration tests' \
 	  'make check                 Check scripts, documentation, and release tooling' \
 	  'make verify                Run all local checks and native tests' \
-	  'make package               Create a versioned ZIP and SHA-256 checksum' \
+	  'make package               Create versioned ZIP + DMG with SHA-256 checksums' \
+	  'make installer             Build and verify the drag-to-install DMG' \
 	  'make screenshots           Refresh real product screenshots in docs/images' \
 	  'make version VERSION=1.2.0 Update version and increment build number' \
 	  'make release-check         Read-only release preflight (requires GitHub)' \
@@ -36,6 +37,7 @@ check:
 verify: check test smoke
 package:
 	bash Scripts/package.sh
+installer: package
 screenshots:
 	bash Scripts/screenshots.sh
 version:

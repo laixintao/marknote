@@ -1,6 +1,6 @@
 # Build and release
 
-[Project home](../../README.en.md) · [User guide](README.md) · [简体中文](../zh-CN/releasing.md)
+[Project home](../../README.md) · [User guide](README.md) · [简体中文](../zh-CN/releasing.md)
 
 ## One-time setup
 
@@ -34,8 +34,8 @@ The command reads the version from `Resources/Info.plist` (currently `1.1.0`) an
 1. Checks a clean worktree, GitHub remote, pushed commit, active Release workflow, changelog entry, and version tags.
 2. Creates and pushes an annotated `v1.1.0` tag, triggering the Release workflow.
 3. Runs repository checks, core tests, and native window tests on `macos-15` (arm64) and `macos-15-intel` (x86_64), then builds, verifies signatures, and packages each architecture.
-4. Verifies both ZIP checksums, embedded app versions, and actual Mach-O CPU types; generates bilingual notes from the changelog.
-5. Creates a draft, uploads both ZIP files and `SHA256SUMS.txt`, and publishes only after all uploads succeed. The local command waits for CI and prints the Release URL.
+4. Verifies all download checksums, ZIP-embedded app versions, actual Mach-O CPU types, and DMG trailers; generates bilingual notes from the changelog.
+5. Creates a draft, uploads all four DMG / ZIP files and `SHA256SUMS.txt`, and publishes only after all uploads succeed. The local command waits for CI and prints the Release URL.
 
 See GitHub's [runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) and [Release CLI documentation](https://cli.github.com/manual/gh_release_create) for the platforms and publishing interface used here.
 
@@ -72,7 +72,8 @@ make release
 | `make check` | Shell syntax, documentation links, release failure/recovery tests; ShellCheck and actionlint when installed |
 | `make smoke` | Real AppKit / WebKit tests under an isolated bundle identifier |
 | `make verify` | Run all the checks and tests above |
-| `make package` | `dist/releases/Marknote-version-macos-architecture.zip` and `.zip.sha256` for this Mac |
+| `make package` | Versioned DMG + ZIP with `.sha256` files in `dist/releases/` for this Mac |
+| `make installer` | Build the DMG (also produces the companion ZIP); mount and verify the app, version, architecture, and Applications shortcut |
 | `make screenshots` | Four real window captures at `docs/images/product-*.png` |
 
 Screenshots and window tests require a logged-in macOS graphical session. Separate bundle identifiers isolate preferences from the regular app. Screenshot originals and logs live in `.build/screenshots-*/`; native test results live in `.build/smoke-*/`.
@@ -102,6 +103,6 @@ make package \
   NOTARY_PROFILE='marknote-notary'
 ```
 
-The script enables hardened runtime, signs, submits for notarization, staples the ticket, and regenerates the ZIP and checksum. The JIT entitlement supports the embedded JavaScriptCore Markdown parser. Keys and credentials stay in the local Keychain.
+The script enables hardened runtime, signs, submits for notarization, staples the ticket, and regenerates the ZIP and checksum, then signs, notarizes, and staples the DMG installer. The JIT entitlement supports the embedded JavaScriptCore Markdown parser. Keys and credentials stay in the local Keychain.
 
 The GitHub workflow does not import certificates or notarize by default. These variables configure local packaging; they are not sent to GitHub. To notarize in CI, configure protected signing credentials and update both the workflow and release notes. See [Apple's notarization documentation](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).

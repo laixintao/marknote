@@ -33,4 +33,5 @@ verification="$(mktemp -d "$PWD/.build/package-check.XXXXXX")"
 trap 'rm -rf "$verification"' EXIT
 ditto -x -k "$destination" "$verification"
 codesign --verify --deep --strict "$verification/墨笺.app"
+bash Scripts/installer.sh
 printf 'Packaged: %s\n' "$destination"

@@ -6,6 +6,12 @@
 "language" = "Language / 语言";
 "languageSystem" = "System Default";
 "languageNote" = "System dialogs use the new language after reopening the app";
+"defaultEditor" = "Set as Default Markdown Editor…";
+"defaultEditorDone" = "Marknote is your default Markdown editor";
+"defaultEditorMessage" = "Double-click a Markdown file in Finder to open it in Marknote. Files with a custom Open With setting keep their individual choice.";
+"defaultEditorFailed" = "Could not change the default Markdown editor";
+"installFirst" = "Install Marknote first";
+"installFirstMessage" = "Drag Marknote to Applications, eject the installer, and open the installed app before setting it as your default editor.";
 "services" = "Services";
 "hideApp" = "Hide Marknote";
 "hideOthers" = "Hide Others";

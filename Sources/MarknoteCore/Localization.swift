@@ -73,6 +73,7 @@ public enum L10n {
     public enum Key: String, CaseIterable {
         case appName, tagline, about, aboutCredits, aboutCopyright
         case language, languageSystem, languageNote
+        case defaultEditor, defaultEditorDone, defaultEditorMessage, defaultEditorFailed, installFirst, installFirstMessage
         case services, hideApp, hideOthers, showAll, quit
         case menuFile, newDocument, open, openRecent, close, save, saveAs, revert, exportHTML, exportPDF
         case menuEdit, undo, redo, cut, copy, paste, selectAll, find

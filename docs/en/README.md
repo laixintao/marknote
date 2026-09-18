@@ -1,19 +1,21 @@
 # Marknote user guide
 
-[Project home](../../README.en.md) · [简体中文](../zh-CN/README.md) · [Release guide](releasing.md)
+[Project home](../../README.md) · [简体中文](../zh-CN/README.md) · [Release guide](releasing.md)
 
 ![Marknote's native editor and preview in English](../images/product-english.png)
 
 ## Install
 
-Requires macOS 13 or later. On this repository's Releases page, choose the package matching the processor shown in About This Mac:
+Requires macOS 13 or later. On the [Releases page](https://github.com/laixintao/marknote/releases), choose the package matching the processor shown in About This Mac:
 
 | Mac | File |
 | --- | --- |
-| Apple Silicon (M series) | `Marknote-<version>-macos-arm64.zip` |
-| Intel | `Marknote-<version>-macos-x86_64.zip` |
+| Apple Silicon (M series) | `Marknote-<version>-macos-arm64.dmg` |
+| Intel | `Marknote-<version>-macos-x86_64.dmg` |
 
-Extract the ZIP, move `墨笺.app` to Applications, and open it. Download `SHA256SUMS.txt` to compare the matching entry with `shasum -a 256 package.zip`. If you downloaded both packages, run `shasum -a 256 -c SHA256SUMS.txt`.
+Open the DMG and drag `墨笺.app` onto the Applications shortcut. Eject the disk image, then open the installed app from Applications. For an update, quit the old version before replacing it; your Markdown files and preferences remain separate. ZIP archives are available as an alternative.
+
+Download `SHA256SUMS.txt` and compare its matching entry with `shasum -a 256 installer.dmg`. If all four DMG / ZIP files have been downloaded, `shasum -a 256 -c SHA256SUMS.txt` verifies all of them.
 
 Default GitHub builds are ad-hoc signed and are not Apple-notarized. macOS may block the first launch; follow the system prompt and [Apple's app security guidance](https://support.apple.com/102445), or build locally on your Mac. Optional Developer ID signing and notarization are covered in the [release guide](releasing.md).
 
@@ -26,6 +28,12 @@ make run
 ```
 
 The app is generated at `dist/墨笺.app`. For a debug build, use `make build CONFIGURATION=debug`. You can open `Package.swift` in Xcode; use the packaged `.app` for document associations and application menus. Resources are bundled and no Swift dependency downloads are required.
+
+## Open Markdown files by default
+
+After installing, choose **Marknote → Set as Default Markdown Editor…** and approve any macOS prompt. Double-clicking `.md`, `.markdown`, `.mdown`, and `.mkd` files will then open them in Marknote. General text files such as `.txt` keep their current default app. The setting is applied only when you choose this command; running from the read-only installer prompts you to install first.
+
+You can also use Finder: select a `.md` file → **Get Info** (`⌘I`) → **Open with** → choose **Marknote** → **Change All…**. This is also how you switch back to a different editor. A file with its own custom Open With setting may need to be changed individually.
 
 ## Write and save
 

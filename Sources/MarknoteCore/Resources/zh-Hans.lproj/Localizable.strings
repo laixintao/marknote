@@ -6,6 +6,12 @@
 "language" = "语言 / Language";
 "languageSystem" = "跟随系统";
 "languageNote" = "系统对话框的语言将在重新打开应用后生效";
+"defaultEditor" = "设为默认 Markdown 编辑器…";
+"defaultEditorDone" = "墨笺已成为默认 Markdown 编辑器";
+"defaultEditorMessage" = "在 Finder 中双击 Markdown 文件即可用墨笺打开。单独指定过打开方式的文件会保留各自的选择。";
+"defaultEditorFailed" = "无法更改默认 Markdown 编辑器";
+"installFirst" = "请先安装墨笺";
+"installFirstMessage" = "请先将墨笺拖入“应用程序”，推出安装磁盘，然后打开已安装的应用再设置默认编辑器。";
 "services" = "服务";
 "hideApp" = "隐藏墨笺";
 "hideOthers" = "隐藏其他";

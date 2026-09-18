@@ -12,8 +12,12 @@ import MarknoteCore
 
     static func run(in directory: URL) async {
         setbuf(stdout, nil)
-        DispatchQueue.global().asyncAfter(deadline: .now() + 45) {
-            fputs("FAIL: Native integration test exceeded 45 seconds\n", stderr)
+        DispatchQueue.global().asyncAfter(deadline: .now() + 90) {
+            fputs("FAIL: Native integration test exceeded 90 seconds\n", stderr)
+            let sample = Process()
+            sample.executableURL = URL(fileURLWithPath: "/usr/bin/sample")
+            sample.arguments = [String(ProcessInfo.processInfo.processIdentifier), "1", "1", "-file", directory.appendingPathComponent("timeout.log").path]
+            if (try? sample.run()) != nil { sample.waitUntilExit() }
             exit(1)
         }
         var checks: [String] = []
@@ -25,6 +29,19 @@ import MarknoteCore
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             L10n.shared.select(.simplifiedChinese)
+            let markdownTypes = MarkdownFileAssociation.contentTypes
+            try check(!markdownTypes.isEmpty && markdownTypes.allSatisfy { !["public.plain-text", "public.text", "public.data"].contains($0.identifier) }, "默认打开方式只针对 Markdown 类型")
+            var requestedTypes: [String] = []
+            try await MarkdownFileAssociation.setDefault { application, type in
+                try check(application == Bundle.main.bundleURL, "默认打开方式使用当前应用路径")
+                requestedTypes.append(type.identifier)
+            }
+            try check(requestedTypes == markdownTypes.map(\.identifier), "默认打开方式依次设置去重后的 Markdown 类型")
+            var caughtFailure = false
+            do {
+                try await MarkdownFileAssociation.setDefault { _, _ in throw Failure(message: "Simulated system refusal") }
+            } catch { caughtFailure = true }
+            try check(caughtFailure, "系统拒绝更改默认应用时向界面传递错误")
             var document = try documentController.makeUntitledDocument(ofType: MarkdownDocument.typeName) as! MarkdownDocument
             document.text = "# 验证文稿\n\n中文与 emoji 🌱\n\n- [ ] 任务\n"
             documentController.addDocument(document)
@@ -58,9 +75,7 @@ import MarknoteCore
             try check(document.text.contains("- [ ] 任务\n- [ ] "), "待办列表自动续写")
             editor.insertNewline(nil)
             try check(!document.text.contains("\n- [ ] \n"), "空列表回车退出列表")
-            editor.breakUndoCoalescing()
-            while let manager = document.undoManager, manager.groupingLevel > 0 { manager.endUndoGrouping() }
-            try await Task.sleep(nanoseconds: 250_000_000)
+            try await settleEditing(editor, document: document)
             let url = directory.appendingPathComponent("roundtrip.md")
             try await save(document, to: url)
             let saved = try String(contentsOf: url, encoding: .utf8)
@@ -73,11 +88,7 @@ import MarknoteCore
             try check(document.text == saved, "通过系统文档控制器重新打开文件内容完全一致")
             editor.setSelectedRange(NSRange(location: editor.string.utf16.count, length: 0))
             editor.insertText("\n自动保存验证", replacementRange: editor.selectedRange())
-            editor.breakUndoCoalescing()
-            // Direct protocol calls do not end an NSEvent. Close the synthetic input event's
-            // undo group so NSDocument receives the same commit notification as real typing.
-            while let manager = document.undoManager, manager.groupingLevel > 0 { manager.endUndoGrouping() }
-            try await Task.sleep(nanoseconds: 250_000_000)
+            try await settleEditing(editor, document: document)
             try await autosave(document)
             let autosaved = try String(contentsOf: url, encoding: .utf8)
             try check(autosaved == document.text, "系统原位自动保存写入最新编辑")
@@ -249,6 +260,17 @@ import MarknoteCore
         try check(L10n.shared.selection == .system, "语言菜单支持恢复跟随系统")
         try chooseLanguage(.simplifiedChinese)
         try check(document.text == originalText, "多次语言切换始终保留原文内容")
+    }
+
+    private static func settleEditing(_ editor: NSTextView, document: MarkdownDocument) async throws {
+        editor.breakUndoCoalescing()
+        while let manager = document.undoManager, manager.groupingLevel > 0 { manager.endUndoGrouping() }
+        // AppKit finishes document editing activities after an NSEvent is dispatched.
+        // A Swift Task sleep alone may never end that activity on an idle CI desktop.
+        if let event = NSEvent.otherEvent(with: .applicationDefined, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: editor.window?.windowNumber ?? 0, context: nil, subtype: 0, data1: 0, data2: 0) {
+            NSApp.postEvent(event, atStart: false)
+        }
+        try await Task.sleep(nanoseconds: 300_000_000)
     }
 
     private static func save(_ document: MarkdownDocument, to url: URL) async throws {

@@ -1,0 +1,35 @@
+MARKNOTE — A little space to think.
+
+INSTALL
+1. Drag 墨笺.app onto the Applications shortcut in this window.
+2. Eject the Marknote disk image.
+3. Open Marknote from Applications.
+
+OPEN MARKDOWN FILES BY DEFAULT
+In the installed app, choose:
+Marknote > Set as Default Markdown Editor…
+Then double-click a .md file in Finder to open it in Marknote.
+macOS may ask you to confirm the change.
+
+UPDATES
+Quit the existing app before replacing it in Applications.
+Your Markdown files and preferences are kept separately from the application.
+
+macOS 13+ is required. Choose arm64 for Apple Silicon or x86_64 for Intel.
+Default community builds are ad-hoc signed, not Apple-notarized.
+Help: https://github.com/laixintao/marknote
+
+────────────────────────────────────────
+
+安装墨笺
+1. 将 墨笺.app 拖到此窗口中的 Applications（应用程序）快捷方式。
+2. 推出 Marknote 安装磁盘。
+3. 从“应用程序”中打开墨笺。
+
+默认打开 Markdown 文件
+在已安装的应用中选择“墨笺 > 设为默认 Markdown 编辑器…”。
+此后在 Finder 双击 .md 文件即可用墨笺打开。macOS 可能要求确认。
+
+更新时先退出旧版本，再替换“应用程序”中的应用；文稿与偏好设置会保留。
+需要 macOS 13+；M 系列芯片选 arm64，Intel 芯片选 x86_64。
+默认社区构建使用临时签名，未经 Apple 公证。

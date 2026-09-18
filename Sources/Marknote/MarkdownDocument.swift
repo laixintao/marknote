@@ -3,7 +3,7 @@ import MarknoteCore
 
 @objc(MarkdownDocument)
 final class MarkdownDocument: NSDocument {
-    static let typeName = "net.marknote.markdown"
+    static let typeName = "net.daringfireball.markdown"
     var text = ""
 
     override var displayName: String! {

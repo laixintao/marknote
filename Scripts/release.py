@@ -137,6 +137,25 @@ def verify_archive(archive, release_version, arch):
     return expected
 
 
+def verify_installer(installer):
+    installer = Path(installer)
+    checksum = installer.with_suffix(".dmg.sha256")
+    if not installer.is_file() or not checksum.is_file():
+        raise ValueError(f"Missing installer or checksum: {installer.name}")
+    expected = f"{hashlib.sha256(installer.read_bytes()).hexdigest()}  {installer.name}"
+    if checksum.read_text().strip() != expected:
+        raise ValueError(f"Checksum mismatch: {installer.name}")
+    # UDIF disk images have a 512-byte trailer beginning with 'koly'. The macOS
+    # packaging job additionally mounts the image and verifies its app signature.
+    with installer.open("rb") as stream:
+        if installer.stat().st_size < 512:
+            raise ValueError(f"Invalid DMG: {installer.name}")
+        stream.seek(-512, 2)
+        if stream.read(4) != b"koly":
+            raise ValueError(f"Invalid DMG: {installer.name}")
+    return expected
+
+
 def verify_assets(directory, release_version):
     """Check digests, bundled versions, and actual Mach-O CPU types before publishing."""
     directory = Path(directory)
@@ -146,6 +165,10 @@ def verify_assets(directory, release_version):
         expected = verify_archive(archive, release_version, arch)
         assets.append(archive)
         checksums.append(expected)
+    for arch in ("arm64", "x86_64"):
+        installer = directory / f"Marknote-{release_version}-macos-{arch}.dmg"
+        checksums.append(verify_installer(installer))
+        assets.append(installer)
     manifest = directory / "SHA256SUMS.txt"
     manifest.write_text("\n".join(checksums) + "\n")
     return assets + [manifest]
@@ -159,10 +182,11 @@ def release_notes(tag):
         raise ValueError(f"Add a nonempty ## [{current}] entry to CHANGELOG.md before releasing.")
     return match[1].strip() + "\n\n" + (
         "### Downloads / 下载\n\n"
-        "- **Apple Silicon (M series):** `macos-arm64.zip`\n"
-        "- **Intel:** `macos-x86_64.zip`\n"
+        "- **Apple Silicon (M series):** `macos-arm64.dmg` (installer), `.zip` (portable archive)\n"
+        "- **Intel:** `macos-x86_64.dmg` (installer), `.zip` (portable archive)\n"
         "- **macOS 13+** · Verify downloads with `SHA256SUMS.txt`.\n\n"
-        "Extract the ZIP and move 墨笺.app to Applications. / 解压后将 墨笺.app 拖入应用程序。\n\n"
+        "Open the DMG and drag 墨笺.app to Applications, then eject the installer. / 打开 DMG，将 墨笺.app 拖入应用程序，然后推出安装磁盘。\n\n"
+        "In Marknote, choose **Set as Default Markdown Editor…** to open .md files by double-clicking. / 在墨笺菜单选择“设为默认 Markdown 编辑器…”即可通过双击打开 .md 文件。\n\n"
         "CI builds use ad-hoc signatures and are not Apple-notarized. / CI 构建使用临时签名，未经 Apple 公证。\n"
     )
 

@@ -1,19 +1,21 @@
 # 墨笺使用文档
 
-[项目首页](../../README.md) · [English](../en/README.md) · [发布指南](releasing.md)
+[项目首页](../../README.zh-CN.md) · [English](../en/README.md) · [发布指南](releasing.md)
 
 ![墨笺的编辑与预览界面](../images/product-light.png)
 
 ## 安装
 
-墨笺支持 macOS 13 及以上。打开本仓库的 Releases 页面，按“关于本机”中的处理器类型选择安装包：
+墨笺支持 macOS 13 及以上。打开 [Releases 页面](https://github.com/laixintao/marknote/releases)，按“关于本机”中的处理器类型选择安装包：
 
 | Mac 类型 | 文件名 |
 | --- | --- |
-| Apple Silicon（M 系列） | `Marknote-<版本>-macos-arm64.zip` |
-| Intel | `Marknote-<版本>-macos-x86_64.zip` |
+| Apple Silicon（M 系列） | `Marknote-<版本>-macos-arm64.dmg` |
+| Intel | `Marknote-<版本>-macos-x86_64.dmg` |
 
-解压 ZIP，将 `墨笺.app` 拖入“应用程序”并打开。可同时下载 `SHA256SUMS.txt`，用 `shasum -a 256 安装包.zip` 与其中对应一行比较；若两个安装包都已下载，也可执行 `shasum -a 256 -c SHA256SUMS.txt`。
+打开 DMG，将 `墨笺.app` 拖到 Applications（应用程序）快捷方式，推出安装磁盘，然后从“应用程序”打开。更新时先退出旧版本再替换应用，文稿和偏好设置会保留。也提供 ZIP 压缩包。
+
+可下载 `SHA256SUMS.txt`，用 `shasum -a 256 安装包.dmg` 与对应一行比较；若全部四个 DMG / ZIP 文件均已下载，可执行 `shasum -a 256 -c SHA256SUMS.txt`。
 
 默认 GitHub 构建使用临时签名，未经 Apple 公证，macOS 可能阻止首次打开。请根据系统提示及 [Apple 的应用安全说明](https://support.apple.com/102445)处理；也可从源码在自己的 Mac 上构建。Developer ID 签名与公证流程见[发布指南](releasing.md)。
 
@@ -26,6 +28,12 @@ make run
 ```
 
 输出为 `dist/墨笺.app`；`make build CONFIGURATION=debug` 可生成调试版。Xcode 可以直接打开 `Package.swift`，完整文件关联与应用菜单请使用 `.app`。构建过程使用本地内置资源，不下载 Swift 依赖。
+
+## 默认打开 Markdown 文件
+
+安装后选择 **墨笺 → 设为默认 Markdown 编辑器…**，并确认 macOS 可能显示的提示。以后双击 `.md`、`.markdown`、`.mdown`、`.mkd` 文件即可用墨笺打开，`.txt` 等普通文本的默认应用保持原有设置。此设置只在点击该命令时更改；从只读安装磁盘运行时，会提示先完成安装。
+
+也可通过 Finder 设置：选中一个 `.md` 文件 → **显示简介**（`⌘I`）→ **打开方式** → 选择 **墨笺** → **全部更改…**。以后想换回其他编辑器，按同样步骤重新选择即可。单独指定过打开方式的文件可能需要分别更改。
 
 ## 写作与保存
 

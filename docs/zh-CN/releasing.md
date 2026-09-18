@@ -1,6 +1,6 @@
 # 构建与发布
 
-[项目首页](../../README.md) · [使用文档](README.md) · [English](../en/releasing.md)
+[项目首页](../../README.zh-CN.md) · [使用文档](README.md) · [English](../en/releasing.md)
 
 ## 一次配置
 
@@ -35,7 +35,7 @@ make release
 2. 创建注释标签 `v1.1.0` 并推送，自动触发 Release 工作流。
 3. GitHub 在 `macos-15`（arm64）和 `macos-15-intel`（x86_64）上分别检查文档、运行核心和原生窗口测试、构建并验证签名、打包。
 4. 发布 job 检查两个安装包的 SHA-256、内嵌版本及实际 Mach-O 架构；从更新记录生成双语发布说明。
-5. 创建 Release 草稿，上传两个 ZIP 和 `SHA256SUMS.txt`，全部成功后公开发布。终端等待 CI 完成并输出 Release 链接。
+5. 创建 Release 草稿，上传两个架构的 DMG、ZIP 和 `SHA256SUMS.txt`，全部成功后公开发布。终端等待 CI 完成并输出 Release 链接。
 
 GitHub 官方的 [runner 列表](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)与 [Release CLI 文档](https://cli.github.com/manual/gh_release_create)说明了这里使用的平台与发布接口。
 
@@ -72,7 +72,8 @@ make release
 | `make check` | 脚本语法、文档链接及发布工具失败恢复测试；有安装时也运行 ShellCheck 和 actionlint |
 | `make smoke` | 独立应用标识下的原生 AppKit / WebKit 测试 |
 | `make verify` | 上述检查和测试全部执行 |
-| `make package` | 当前机器架构的 `dist/releases/Marknote-版本-macos-架构.zip` 和 `.zip.sha256` |
+| `make package` | 当前机器架构的 DMG、ZIP 和各自 `.sha256`，位于 `dist/releases/` |
+| `make installer` | 生成 DMG 和 ZIP；挂载检查应用签名、版本、架构及 Applications 快捷方式 |
 | `make screenshots` | 生成 `docs/images/product-*.png` 的四张真实截图 |
 
 截图和窗口测试需要当前登录用户的 macOS 图形会话，使用独立应用标识，不改动正式应用偏好。原始截图和日志在 `.build/screenshots-*/`；窗口测试结果在 `.build/smoke-*/`。
@@ -102,6 +103,6 @@ make package \
   NOTARY_PROFILE='marknote-notary'
 ```
 
-脚本会启用 hardened runtime、签名、提交 Apple 公证、装订公证票据后重新生成 ZIP 和校验和。所需的 JIT 权限用于内置 JavaScriptCore Markdown 解析器。密钥和凭据仅通过本地钥匙串使用。
+脚本会启用 hardened runtime、签名、提交 Apple 公证、装订公证票据后重新生成 ZIP 和校验和，再对 DMG 安装包签名、公证及装订票据。所需的 JIT 权限用于内置 JavaScriptCore Markdown 解析器。密钥和凭据仅通过本地钥匙串使用。
 
 当前 GitHub 工作流默认不导入证书，也不执行公证；上述变量控制本地打包，不会传到 GitHub。若要将 CI 改为公证发布，需要自行配置受保护的签名凭据，并同步修改工作流与发布说明。参考 [Apple 公证文档](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)。

@@ -1,7 +1,8 @@
 import AppKit
 import MarknoteCore
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenuItemValidation {
+    private var changingDefaultEditor = false
     func applicationWillFinishLaunching(_ notification: Notification) {
         buildMenus()
         NotificationCenter.default.addObserver(self, selector: #selector(languageDidChange), name: LocalizationStore.didChange, object: L10n.shared)
@@ -69,6 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         languageMenu.addItem(note)
         languageItem.submenu = languageMenu
         application.addItem(languageItem)
+        add(application, L10n.text(.defaultEditor), #selector(makeDefaultMarkdownEditor), target: self)
         application.addItem(.separator())
         let services = NSMenuItem(title: L10n.text(.services), action: nil, keyEquivalent: "")
         services.submenu = NSMenu(title: L10n.text(.services))
@@ -148,6 +150,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func changeLanguage(_ sender: NSMenuItem) {
         guard let value = sender.representedObject as? String, let language = AppLanguage(rawValue: value) else { return }
         L10n.shared.select(language)
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(makeDefaultMarkdownEditor) {
+            menuItem.state = MarkdownFileAssociation.isDefault ? .on : .off
+            return !changingDefaultEditor
+        }
+        return true
+    }
+
+    @objc private func makeDefaultMarkdownEditor() {
+        let readOnly = (try? Bundle.main.bundleURL.resourceValues(forKeys: [.volumeIsReadOnlyKey]))?.volumeIsReadOnly ?? false
+        guard !readOnly else {
+            let alert = NSAlert()
+            alert.messageText = L10n.text(.installFirst)
+            alert.informativeText = L10n.text(.installFirstMessage)
+            alert.runModal()
+            return
+        }
+        guard !changingDefaultEditor else { return }
+        changingDefaultEditor = true
+        Task { @MainActor in
+            defer { changingDefaultEditor = false }
+            let alert = NSAlert()
+            do {
+                try await MarkdownFileAssociation.setDefault()
+                alert.messageText = L10n.text(.defaultEditorDone)
+                alert.informativeText = L10n.text(.defaultEditorMessage)
+            } catch {
+                alert.alertStyle = .warning
+                alert.messageText = L10n.text(.defaultEditorFailed)
+                alert.informativeText = error.localizedDescription
+            }
+            alert.runModal()
+        }
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {

@@ -43,7 +43,17 @@ class ReleaseTests(unittest.TestCase):
         return path
 
     def pair(self):
-        return [self.archive("arm64"), self.archive("x86_64")]
+        archives = [self.archive("arm64"), self.archive("x86_64")]
+        self.installer("arm64")
+        self.installer("x86_64")
+        return archives
+
+    def installer(self, arch):
+        path = self.directory / f"Marknote-{self.version}-macos-{arch}.dmg"
+        path.write_bytes(b"test image" + b"koly" + bytes(508))
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        path.with_suffix(".dmg.sha256").write_text(f"{digest}  {path.name}\n")
+        return path
 
     def test_version_rejects_tag_and_shell_input(self):
         for value in ("v1.2.3", "1.2", "01.2.3", "1.2.3-beta", "1.2.3\n", "$(touch /tmp/x)"):
@@ -75,12 +85,27 @@ class ReleaseTests(unittest.TestCase):
         assets = release.verify_assets(self.directory, self.version)
         self.assertEqual(assets[:2], archives)
         self.assertEqual(assets[-1].name, "SHA256SUMS.txt")
-        self.assertEqual(len(assets[-1].read_text().splitlines()), 2)
+        self.assertEqual(len(assets[-1].read_text().splitlines()), 4)
 
     def test_ditto_chinese_paths_can_be_verified_on_linux(self):
         self.archive("arm64", legacy_paths=True)
         self.archive("x86_64", legacy_paths=True)
-        self.assertEqual(len(release.verify_assets(self.directory, self.version)), 3)
+        self.installer("arm64")
+        self.installer("x86_64")
+        self.assertEqual(len(release.verify_assets(self.directory, self.version)), 5)
+
+    def test_missing_installer_blocks_publication(self):
+        self.pair()
+        next(self.directory.glob("*.dmg")).unlink()
+        with self.assertRaisesRegex(ValueError, "Missing installer"):
+            release.verify_assets(self.directory, self.version)
+
+    def test_invalid_disk_image_is_rejected(self):
+        path = self.installer("arm64")
+        path.write_bytes(bytes(1024))
+        path.with_suffix(".dmg.sha256").write_text(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+        with self.assertRaisesRegex(ValueError, "Invalid DMG"):
+            release.verify_installer(path)
 
     def test_missing_intel_package_blocks_publication(self):
         self.archive("arm64")

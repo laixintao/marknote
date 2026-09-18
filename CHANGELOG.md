@@ -4,6 +4,10 @@
 
 ### Added / 新增
 
+- DMG installers with an Applications shortcut for Apple Silicon and Intel. / 双架构 DMG 安装器，内含应用程序快捷方式。
+- An app-menu command to make Marknote the default Markdown editor in Finder. / 可在应用菜单中设置为 Finder 的默认 Markdown 编辑器。
+- English as the default README, with a separate Chinese overview. / 默认英文首页，保留独立中文介绍。
+
 - English / 简体中文 interface, system language detection, and saved language preferences. / 中英文界面、跟随系统与语言偏好保存。
 - Independent Edit and Preview switches with keyboard shortcuts and focus-mode integration. / 编辑与预览独立开关、快捷键及专注模式配合。
 - Native AppKit Markdown editing, outline navigation, autosave, HTML and PDF exports. / 原生编辑、文档大纲、自动保存及 HTML / PDF 导出。

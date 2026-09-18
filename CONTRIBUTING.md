@@ -1,8 +1,8 @@
 # Contributing / 参与开发
 
-[中文使用文档](docs/zh-CN/README.md) · [English user guide](docs/en/README.md)
+[English user guide](docs/en/README.md) · [中文使用文档](docs/zh-CN/README.md)
 
-需要 macOS 13+、Swift 6.1+、Python 3.9+。 / Requires macOS 13+, Swift 6.1+, and Python 3.9+.
+Requires macOS 13+, Swift 6.1+, and Python 3.9+. / 需要 macOS 13+、Swift 6.1+、Python 3.9+。
 
 ```sh
 make run
