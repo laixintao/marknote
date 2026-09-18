@@ -29,6 +29,8 @@ import MarknoteCore
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             L10n.shared.select(.simplifiedChinese)
+            UserDefaults.standard.set(false, forKey: "paragraphFocus")
+            UserDefaults.standard.set(false, forKey: "typewriterScrolling")
             let markdownTypes = MarkdownFileAssociation.contentTypes
             try check(!markdownTypes.isEmpty && markdownTypes.allSatisfy { !["public.plain-text", "public.text", "public.data"].contains($0.identifier) }, "默认打开方式只针对 Markdown 类型")
             var requestedTypes: [String] = []
@@ -100,6 +102,7 @@ import MarknoteCore
             try check(!editor.hasMarkedText() && document.text.hasSuffix("中文输入🌱"), "输入法提交中文与 emoji 后同步文稿")
             try await verifyLanguageAndPanes(document: document, controller: controller, directory: directory) { try check($0, $1) }
             try await verifyOutlineNavigation { try check($0, $1) }
+            try await verifyWritingTools(in: directory) { try check($0, $1) }
             controller.showEditor()
             controller.showPreview()
             controller.showSplit()
@@ -312,6 +315,154 @@ import MarknoteCore
         try check(document.text == original && !document.isDocumentEdited, "目录导航不修改文稿内容或保存状态")
     }
 
+    private static func verifyWritingTools(in directory: URL, check: (Bool, String) throws -> Void) async throws {
+        let url = directory.appendingPathComponent("writing-tools.md")
+        try "# 写作工具\n\n中文🌱链接\n".write(to: url, atomically: true, encoding: .utf8)
+        let document = try await openDocument(url)
+        let controller = document.windowControllers.first as! EditorWindowController
+        let editor = controller.editor
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("marknote-tests-" + UUID().uuidString))
+        defer {
+            pasteboard.releaseGlobally()
+            controller.activePalette?.dismiss(nil)
+            UserDefaults.standard.set(false, forKey: "paragraphFocus")
+            UserDefaults.standard.set(false, forKey: "typewriterScrolling")
+            document.updateChangeCount(.changeCleared)
+            document.close()
+        }
+        let original = document.text
+        editor.setSelectedRange((editor.string as NSString).range(of: "中文🌱链接"))
+        pasteboard.setString("https://example.com/a(b)", forType: .string)
+        try check(editor.paste(from: pasteboard), "粘贴网址使用选区生成链接")
+        try check(document.text.contains("[中文🌱链接](https://example.com/a%28b%29)"), "智能链接保留 Unicode 文本并转义网址括号")
+        try await settleEditing(editor, document: document)
+        editor.undoManager?.undo()
+        try check(document.text == original, "智能链接可完整撤销")
+        editor.undoManager?.redo()
+        try check(document.text.contains("[中文🌱链接]"), "智能链接可重做")
+
+        document.text = "| Name | 值 |\n| --- | ---: |\n| row | 中文🌱 |\n"
+        controller.reloadDocument()
+        editor.undoManager?.removeAllActions()
+        editor.setSelectedRange((editor.string as NSString).range(of: "Name"))
+        controller.formatTable()
+        let formatted = document.text
+        try check(formatted.contains("| Name |") && formatted.contains("---:"), "表格整理保持列对齐标记")
+        // Formatting and pressing Tab are separate AppKit input events.
+        try await settleEditing(editor, document: document)
+        editor.insertTab(nil)
+        try check((editor.string as NSString).substring(with: editor.selectedRange()) == "值", "Tab 选中下一表格单元格")
+        editor.insertTab(nil)
+        try check((editor.string as NSString).substring(with: editor.selectedRange()) == "row", "Tab 跳过表格分隔行")
+        editor.insertBacktab(nil)
+        try check((editor.string as NSString).substring(with: editor.selectedRange()) == "值", "Shift-Tab 返回上一单元格")
+        editor.setSelectedRange((editor.string as NSString).range(of: "中文🌱"))
+        editor.insertTab(nil)
+        try check(document.text != formatted && document.text.hasPrefix(formatted), "最后一格 Tab 自动添加一行")
+        try await settleEditing(editor, document: document)
+        editor.undoManager?.undo()
+        try check(document.text == formatted, "表格增行作为一次操作撤销")
+
+        editor.setSelectedRange(NSRange(location: editor.string.utf16.count, length: 0))
+        let beforeImage = document.text
+        let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        let imageColor = NSColor(srgbRed: 0.1, green: 0.6, blue: 0.6, alpha: 1)
+        for x in 0..<2 { for y in 0..<2 { bitmap.setColor(imageColor, atX: x, y: y) } }
+        let png = bitmap.representation(using: .png, properties: [:])!
+        pasteboard.clearContents()
+        pasteboard.setData(png, forType: .png)
+        try check(editor.paste(from: pasteboard), "原生剪贴板图片插入文稿")
+        try check(document.text.contains("](assets/image-") && !document.text.contains(directory.path), "图片使用相对路径而非本机绝对路径")
+        let assets = try FileManager.default.contentsOfDirectory(at: directory.appendingPathComponent("assets"), includingPropertiesForKeys: nil)
+        try check(assets.count == 1 && (try Data(contentsOf: assets[0])) == png, "图片复制到文稿旁 assets 目录且内容不变")
+        controller.refreshPreview()
+        try await waitForPreview(controller)
+        let rendered = try await controller.preview.evaluateJavaScript("document.querySelector('img')?.naturalWidth") as? Int
+        try check(rendered == 2, "插入图片在 WebKit 预览中真实显示")
+        try await settleEditing(editor, document: document)
+        editor.undoManager?.undo()
+        try check(document.text == beforeImage && FileManager.default.fileExists(atPath: assets[0].path), "撤销图片插入保留附件供重做")
+        editor.undoManager?.redo()
+        try check(document.text.contains(assets[0].lastPathComponent), "重做图片插入恢复原有引用")
+        let imported = try ImageImport.read(files: [assets[0]])
+        try check(imported.count == 1 && imported[0].data == png, "文件选择和拖放共用图片读取路径")
+        let draft = try documentController.makeUntitledDocument(ofType: MarkdownDocument.typeName) as! MarkdownDocument
+        documentController.addDocument(draft)
+        draft.makeWindowControllers()
+        draft.showWindows()
+        let draftController = draft.windowControllers.first as! EditorWindowController
+        draftController.importImages(imported, at: NSRange(location: 0, length: 0))
+        try check(draftController.window?.attachedSheet != nil && draft.text.isEmpty, "未保存文稿插图先提示保存且不修改正文")
+        if let window = draftController.window, let sheet = window.attachedSheet { window.endSheet(sheet, returnCode: .alertSecondButtonReturn) }
+        try await Task.sleep(nanoseconds: 150_000_000)
+        try check(draftController.pendingImageInsertion == nil && draft.text.isEmpty, "取消保存后取消图片插入")
+        draft.close()
+
+        document.text = (0..<120).map { "Paragraph \($0) 中文🌱 writing.\n\n" }.joined()
+        controller.reloadDocument()
+        editor.undoManager?.removeAllActions()
+        document.updateChangeCount(.changeCleared)
+        controller.window?.makeKeyAndOrderFront(nil)
+        editor.setSelectedRange(NSRange(location: (editor.string as NSString).range(of: "Paragraph 60").location, length: 0))
+        let beforeFocus = document.text
+        controller.toggleParagraphFocus()
+        let manager = editor.layoutManager!
+        try check(manager.temporaryAttribute(.foregroundColor, atCharacterIndex: 0, effectiveRange: nil) != nil && manager.temporaryAttribute(.foregroundColor, atCharacterIndex: editor.selectedRange().location, effectiveRange: nil) == nil, "段落聚焦只淡化非当前段落")
+        controller.toggleTypewriterScrolling()
+        try await Task.sleep(nanoseconds: 150_000_000)
+        editor.updateWritingFocus()
+        let glyph = manager.glyphIndexForCharacter(at: editor.selectedRange().location)
+        let caret = manager.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: editor.textContainer!)
+        let center = editor.enclosingScrollView!.contentView.bounds.midY
+        try check(abs(caret.midY + editor.textContainerOrigin.y - center) < 25, "打字机滚动将当前行保持在编辑器中间")
+        try check(document.text == beforeFocus && !document.isDocumentEdited, "写作模式不改变正文和修改状态")
+        editor.setMarkedText("zhongwen", selectedRange: NSRange(location: 8, length: 0), replacementRange: editor.selectedRange())
+        editor.updateWritingFocus()
+        try check(editor.hasMarkedText(), "写作模式保留输入法组合文本")
+        editor.insertText("写作", replacementRange: editor.markedRange())
+        try check(document.text.contains("写作Paragraph 60"), "写作模式正常提交中文输入")
+        controller.toggleParagraphFocus()
+        controller.toggleTypewriterScrolling()
+        try check(editor.textContainerInset.height == 32 && manager.temporaryAttribute(.foregroundColor, atCharacterIndex: 0, effectiveRange: nil) == nil, "关闭写作模式恢复普通排版和语法颜色")
+
+        try await settleEditing(editor, document: document)
+        let beforePalette = document.text
+        let paletteSelection = editor.selectedRange()
+        controller.showCommandPalette()
+        guard let palette = controller.activePalette else { throw Failure(message: "Command palette did not open") }
+        guard let searchEditor = palette.window?.fieldEditor(false, for: palette.search) as? NSTextView else { throw Failure(message: "Command search did not receive focus") }
+        searchEditor.setMarkedText("biaoge", selectedRange: NSRange(location: 6, length: 0), replacementRange: searchEditor.selectedRange())
+        palette.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: palette.search))
+        try check(searchEditor.hasMarkedText(), "命令搜索保留中文输入法组合文本")
+        searchEditor.insertText("表格", replacementRange: searchEditor.markedRange())
+        palette.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: palette.search))
+        try check(palette.results.contains(where: { $0.id == "table" }), "命令面板提交中文后搜索对应命令")
+        palette.filter("preview")
+        try check(palette.results.first?.id == "preview", "中文界面的命令面板可使用英文关键词搜索")
+        try check(palette.control(palette.search, textView: NSTextView(), doCommandBy: #selector(NSResponder.insertNewline(_:))), "命令面板响应回车")
+        try await Task.sleep(nanoseconds: 200_000_000)
+        try check(!controller.isEditorVisible && controller.isPreviewVisible && controller.activePalette == nil, "命令面板执行预览模式并关闭")
+        try check(document.text == beforePalette && editor.selectedRange() == paletteSelection, "命令面板切换布局保留正文和选区")
+        controller.showCommandPalette()
+        let cancelled = controller.activePalette!
+        _ = cancelled.control(cancelled.search, textView: NSTextView(), doCommandBy: #selector(NSResponder.cancelOperation(_:)))
+        try check(controller.activePalette == nil && !controller.isEditorVisible, "Escape 关闭命令面板且保持当前布局")
+        let sibling = directory.appendingPathComponent("附近 Notes 🌱.md")
+        try "# Nearby note".write(to: sibling, atomically: true, encoding: .utf8)
+        controller.showQuickOpen()
+        let quick = controller.activePalette!
+        quick.filter("附近")
+        try check(quick.results.count == 1 && quick.results[0].title == sibling.lastPathComponent, "快速打开搜索同目录 Markdown 文件")
+        quick.accept(nil)
+        for _ in 0..<30 {
+            if documentController.documents.contains(where: { $0.fileURL == sibling }) { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        let opened = documentController.documents.first(where: { $0.fileURL == sibling }) as? MarkdownDocument
+        try check(opened?.text == "# Nearby note" && document.text == beforePalette, "快速打开载入所选文件并保留原文稿")
+        opened?.close()
+    }
+
     private static func settleEditing(_ editor: NSTextView, document: MarkdownDocument) async throws {
         editor.breakUndoCoalescing()
         while let manager = document.undoManager, manager.groupingLevel > 0 { manager.endUndoGrouping() }
@@ -363,7 +514,7 @@ import MarknoteCore
               let bitmap = root.bitmapImageRepForCachingDisplay(in: root.bounds) else { throw Failure(message: "无法截取窗口") }
         root.layoutSubtreeIfNeeded()
         root.effectiveAppearance.performAsCurrentDrawingAppearance { root.cacheDisplay(in: root.bounds, to: bitmap) }
-        let webImage = try await controller.preview.takeSnapshot(configuration: nil)
+        let webImage = controller.isPreviewVisible ? try await controller.preview.takeSnapshot(configuration: nil) : nil
         let image = NSImage(size: root.bounds.size)
         image.lockFocus()
         root.effectiveAppearance.performAsCurrentDrawingAppearance {
@@ -371,7 +522,7 @@ import MarknoteCore
             root.bounds.fill()
         }
         bitmap.draw(in: root.bounds)
-        webImage.draw(in: controller.preview.convert(controller.preview.bounds, to: root))
+        webImage?.draw(in: controller.preview.convert(controller.preview.bounds, to: root))
         image.unlockFocus()
         guard let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { throw Failure(message: "无法编码截图") }
         try png.write(to: url)

@@ -1,6 +1,6 @@
 # Marknote user guide
 
-[Project home](../../README.md) · [简体中文](../zh-CN/README.md) · [Release guide](releasing.md)
+[Project home](../../README.md) · [简体中文](../zh-CN/README.md) · [Release guide](releasing.md) · [Feature research](../research/markdown-tools-2026.md)
 
 ![Marknote's native editor and preview in English](../images/product-english.png)
 
@@ -51,6 +51,34 @@ The View menu and toolbar stay in sync. Each window has its own layout, retained
 
 The outline lists document headings. Clicking a heading keeps the current mode: Edit jumps in the editor, Preview scrolls the rendered document, and Split locates the heading in both panes. Headings inside fenced code blocks are excluded. Adjust the editor font size from View; your font size preference is saved.
 
+## Find commands and documents
+
+Open **View → Command Palette** (`⇧⌘P`) and type a command name. Search accepts English and Chinese keywords, ignores case, and supports abbreviated matches. Recently used commands appear first when the query is empty. Use ↑ / ↓ and Return to choose, or Escape to cancel.
+
+**File → Quick Open** (`⇧⌘O`) searches filenames and paths among open documents, recent files, and up to 1,000 Markdown files directly beside the current saved document. It does not scan subfolders or search document contents. Opening a file preserves your current document in its window.
+
+![The native command palette](../images/product-commands.png)
+
+## Images, links, and tables
+
+Paste an image into the editor, drag image files onto the text, or choose **Format → Insert Image…** (`⇧⌘I`). Marknote copies each image into `assets/` beside the document and inserts a relative Markdown link. An untitled document prompts you to save first; cancelling leaves it unchanged. Move the document and its `assets/` folder together to keep the images available.
+
+PNG, JPEG, GIF, and WebP files are supported, up to 20 MB and 40 million pixels each. Clipboard TIFF images are converted to PNG. Files use unique names to avoid overwriting existing assets. Undo removes the inserted Markdown but keeps the file so Redo works; unused assets can be removed manually when they are no longer needed.
+
+Select words and paste an `http://`, `https://`, or `mailto:` URL to turn those words into a link. **Edit → Paste as Plain Text** (`⌥⇧⌘V`) inserts the clipboard text directly instead.
+
+In a Markdown table, **Format → Format Table** (`⌥⌘T`) aligns the source columns while retaining left / centre / right alignment markers and escaped pipes. Tab selects the next cell, Shift-Tab the previous cell, and Tab in the final cell adds a row. These helpers work with ordinary pipe tables with at least two columns and a separator row; code blocks are left alone.
+
+## Focus on your writing
+
+**View → Paragraph Focus** dims paragraphs outside the current selection. **View → Typewriter Scrolling** keeps the current line near the vertical centre of the editor. These options work independently of the existing focus layout and can be combined. They are remembered for newly opened windows; existing windows retain their own settings.
+
+Selecting text with the mouse pauses automatic centring. Chinese input composition remains intact. These display options do not change the document text or its saved state.
+
+![Paragraph focus and typewriter scrolling in the native editor](../images/product-writing.png)
+
+The tools in these three sections are available in the source build on `main`; see [Unreleased](../../CHANGELOG.md) for changes awaiting a tagged release.
+
 ## Language and appearance
 
 Choose **Marknote → Language / 语言 → System Default, 简体中文, or English**. The default follows supported languages in your system preference list, falling back to English when none are supported.
@@ -70,6 +98,10 @@ Light and dark appearance follow macOS settings.
 | Undo / Redo | `⌘Z` / `⌘⇧Z` |
 | Bold / Italic / Link | `⌘B` / `⌘I` / `⌘K` |
 | Find and replace | `⌘F` |
+| Command palette / Quick open | `⇧⌘P` / `⇧⌘O` |
+| Insert image / Format table | `⇧⌘I` / `⌥⌘T` |
+| Next / Previous table cell | `Tab` / `⇧Tab` |
+| Paste as plain text | `⌥⇧⌘V` |
 | Toggle outline | `⌘⌥0` |
 | Toggle Edit / Preview | `⌘⌥E` / `⌘⌥P` |
 | Editor only / Split / Preview only | `⌃⌘1` / `⌃⌘2` / `⌃⌘3` |

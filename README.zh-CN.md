@@ -11,6 +11,9 @@
 ## 写作所需，恰到好处
 
 - **原生编辑体验**：中文输入、语法着色、查找与替换、撤销 / 重做、字号调整。
+- **键盘快速导航**：搜索命令，以及快速打开已打开、最近使用和同目录 Markdown 文稿。
+- **减少编辑步骤**：粘贴或拖入图片、相对路径附件、选中文字粘贴网址生成链接，以及表格整理和 Tab 导航。
+- **舒适的长文写作**：可分别开启段落聚焦和打字机滚动。
 - **选择自己的布局**：编辑 / 分栏 / 预览单选按钮组，以及专注模式。
 - **看清文稿结构**：可跳转的大纲，中英文混排字数、字符数和光标位置。
 - **完整的日常 Markdown**：标题、列表、代码块、引用、图片、表格、任务列表和删除线。
@@ -22,6 +25,8 @@
 | ![墨笺深色双栏界面](docs/images/product-dark.png) | ![Marknote English preview-only view](docs/images/product-preview.png) |
 
 截图来自真实 AppKit 窗口，可通过 `make screenshots` 重新生成。
+
+新增写作工具已进入 `main`，记录在 [Unreleased](CHANGELOG.md) 中；下次正式发布前，可从源码体验。[五款产品调研摘要](docs/zh-CN/market-research.md)说明了用户反馈和功能选择。
 
 ## 安装与运行
 
@@ -41,6 +46,9 @@ make run
 | --- | --- |
 | 默认打开 `.md` | 墨笺 → 设为默认 Markdown 编辑器… |
 | 切换界面语言 | 墨笺 / Marknote → 语言 / Language |
+| 命令面板 / 快速打开 | `⇧⌘P` / `⇧⌘O` |
+| 插入图片 / 整理表格 | `⇧⌘I` / `⌥⌘T` |
+| 段落聚焦 / 打字机滚动 | 显示菜单 |
 | 切换编辑 / 分栏 / 预览 | 工具栏按钮组，或 `⌃⌘1` / `⌃⌘2` / `⌃⌘3` |
 | 专注模式 | `⌘⇧F` |
 | 保存 / 查找 | `⌘S` / `⌘F` |
@@ -67,6 +75,7 @@ make release      # 推送版本标签，等待 GitHub CI 创建 Release 并上�
 
 - [中文使用文档](docs/zh-CN/README.md) / [English user guide](docs/en/README.md)
 - [中文发布指南](docs/zh-CN/releasing.md) / [English release guide](docs/en/releasing.md)
+- [五款 Markdown 工具调研](docs/zh-CN/market-research.md) / [English research report](docs/research/markdown-tools-2026.md)
 - [更新记录](CHANGELOG.md) · [贡献指南](CONTRIBUTING.md) · [本地验证记录](VALIDATION.md)
 
 Markdown 解析使用内置 [Marked 15.0.12](https://github.com/markedjs/marked/tree/v15.0.12)，其 [MIT 许可证](Sources/MarknoteCore/Resources/marked-LICENSE.md)随应用分发。原始 HTML 按文字显示；预览不执行文稿脚本。远程图片会联网加载，本地图片受文稿目录边界限制。暂不支持数学公式、Mermaid 或插件。

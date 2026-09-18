@@ -1,0 +1,33 @@
+# Markdown editor research — 18 September 2026
+
+[Project](../../README.md) · [中文摘要](../zh-CN/market-research.md)
+
+## Scope and evidence
+
+There is no public, comparable monthly-active-user ranking for Markdown editors. This is a shortlist of five prominent, actively maintained Markdown writing products relevant to a native Mac editor, not a claim of exact global market-share ranks. Official documentation verifies features; first-person reviews provide qualitative feedback. Review samples are self-selected, and older feedback is labelled rather than presented as a new survey.
+
+| Product | Why include it | Praised workflows and evidence | Gap in Marknote before this work |
+| --- | --- | --- | --- |
+| Obsidian | The US iOS listing currently shows 2.7K ratings and 4.5/5; this is a regional mobile signal, not desktop usage. [App Store](https://apps.apple.com/us/app/obsidian-connected-notes/id1557175442) | A June 2025 user calls a combined command palette / quick switcher their favourite plugin because it reduces shortcut memorisation. [User discussion](https://www.reddit.com/r/ObsidianMD/comments/1lhz608/top_5_plugins_for_obsidian/) Official [command palette](https://obsidian.md/help/plugins/command-palette) and [quick switcher](https://obsidian.md/help/plugins/quick-switcher) support keyboard-driven discovery and navigation. | Menus and recent files exist, but neither is searchable in one keyboard interface. |
+| Typora | A dedicated cross-platform Markdown editor with an active [stable release channel](https://typora.io/releases/stable). No verified comparable active-user count was found. | A long-term user's 2024 account praises low-friction image insertion and table creation. [First-person account](https://jonsully.net/blog/i-really-enjoy-typora) Official [image support](https://support.typora.io/Images/) includes paste, drag/drop, and relative assets; [table editing](https://support.typora.io/Table-Editing/) provides dedicated editing operations. | Local images render, but inserting screenshots needs manual file handling; table insertion is a fixed template. |
+| iA Writer | Its [official site](https://ia.net/writer) reports helping over two million writers since launch. This is cumulative vendor-reported reach, not active users. | Users value an uncluttered writing environment; a detailed [2023 critique](https://www.reddit.com/r/iawriter/comments/10hjasg/ia_writer_a_heartfelt_critique/) praises speed while also warning against distracting presentation. Official [Focus Mode documentation](https://ia.net/writer/support/editor/focus-mode) describes paragraph emphasis and a vertically centred caret, with a warning that centring can interfere with selection during editing. | Existing focus mode hides panes, but does not focus a paragraph or keep the caret centred. |
+| Bear | The US iOS [ratings page](https://apps.apple.com/us/app/bear-markdown-notes/id1016366447?platform=iphone&see-all=reviews) shows 6.9K ratings and 4.7/5, plus Editors' Choice. Again, regional mobile ratings are not market share. | A [2023 Bear 2 discussion](https://www.reddit.com/r/bearapp/comments/151pvvu) specifically welcomes tables and cleaner writing. Official [table documentation](https://bear.app/faq/how-to-use-tables-in-bear/) explains adding rows and columns. | Tables render, but navigating and extending cells requires editing Markdown delimiters manually. |
+| Joplin | Its [download statistics](https://joplinapp.org/help/about/stats/) report over 2.17 million cumulative macOS downloads, including repeat version downloads. | A [June 2026 user account](https://www.reddit.com/r/joplinapp/comments/1u7gyk5/i_feel_dumb_now_love_letter_to_joplin/) values an integrated note-taking workflow. Official [overview](https://joplinapp.org/help/) covers offline notes and search; [attachments](https://joplinapp.org/help/apps/attachments/) integrate supporting material. | Marknote already owns local files and works offline. It can improve access to related files and image attachments without adopting a notebook database. |
+
+## Decisions for Marknote
+
+The following priorities are product judgments from the evidence above, not measured demand percentages. Features must preserve plain `.md` files, native editing, undo, Chinese input, and the chosen Edit / Split / Preview mode during navigation.
+
+| Priority | Implemented feature | Everyday benefit | Boundary |
+| --- | --- | --- | --- |
+| 1 | Searchable command palette and quick open | Find a command or switch documents without remembering every shortcut. | Quick open covers open documents, recent files, and Markdown siblings of the current file, not a whole-disk index or vault. |
+| 1 | Paste, drop, or choose local images | Insert a screenshot in one action; portable relative links replace manual paths. | Store images beside the saved document in `assets/`; no automatic upload. Save an untitled document before inserting assets. |
+| 1 | Table formatting and Tab / Shift-Tab navigation | Align Markdown tables, move between cells, and append a row from the last cell. | A source editor, not a spreadsheet; preserve column alignment and escaped pipes. |
+| 2 | Paragraph focus and typewriter scrolling | Concentrate on the current paragraph and keep a comfortable writing position. | Separate optional controls; do not interfere with IME composition or mouse selection. |
+| 2 | Paste a URL onto selected text | Turn selected words into a link without replacing the words or editing placeholder syntax. | Plain-text paste remains available. Only explicit HTTP(S) and mailto URLs become links. |
+
+Cloud collaboration, a graph database, a plugin marketplace, and AI services have greater product and maintenance implications. WYSIWYG editing, math, diagrams, backlinks, and full-folder content search remain candidates for a separate iteration. Existing autosave, native multi-window editing, outline navigation, exports, and localization already cover useful shared capabilities and should remain dependable.
+
+## Delivery checks
+
+Core checks cover Unicode ranges, safe image paths and collisions, fuzzy search ordering, table alignment and navigation, and smart links. Native checks cover clipboard integration, undo / redo, preview rendering, command execution, file switching, writing modes, language changes, and the previously fixed outline behavior. See [validation](../../VALIDATION.md) for results and manual integration boundaries, and the [user guide](../en/README.md) for shortcuts and behavior. These features are on `main` under [Unreleased](../../CHANGELOG.md); previously published release assets are unchanged.

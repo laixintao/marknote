@@ -13,6 +13,7 @@ func expectNil<T>(_ value: T?, line: Int = #line) { expect(value == nil, "Expect
 
 let suite = MarkdownTests()
 let localization = LocalizationTests()
+let editing = EditingToolsTests()
 let tests: [(String, () throws -> Void)] = [
     ("CommonMark and GFM", suite.testCommonMarkAndGFM),
     ("HTML and unsafe links", suite.testHTMLAndUnsafeLinksAreInert),
@@ -24,6 +25,11 @@ let tests: [(String, () throws -> Void)] = [
     ("List continuation and exit", suite.testListContinuationAndExit),
     ("CJK and Latin word counts", suite.testWordCountHandlesCJKAndLatin),
     ("Standalone export and empty state", suite.testStandaloneExportAndEmptyPreview),
+    ("Smart URL paste", editing.testSmartLinks),
+    ("Command search matching", editing.testSearchMatching),
+    ("Table formatting", editing.testTableFormatting),
+    ("Table keyboard navigation", editing.testTableNavigation),
+    ("Local image attachment storage", editing.testAttachmentStorage),
     ("System language resolution", localization.testSystemLanguageResolution),
     ("Language persistence and notifications", localization.testPreferencePersistenceAndNotifications),
     ("Translation coverage and formats", localization.testEveryTranslationAndFormatIsAvailable)

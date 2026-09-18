@@ -15,7 +15,7 @@ Write in the editor and see your words take shape in the preview. Start with an 
 
 ## Turn ideas into words
 
-Keep your hands on the keyboard and your mind on the page.
+Keep your hands on the keyboard and your mind on the page. Search commands with `⇧⌘P`, or use `⇧⌘O` to switch documents.
 
 | Action | Shortcut |
 | :--- | :--- |
@@ -23,6 +23,10 @@ Keep your hands on the keyboard and your mind on the page.
 | Insert a link | ⌘ K |
 | Find in your document | ⌘ F |
 | Toggle focus mode | ⌘ ⇧ F |
+
+Paste a screenshot to insert an image beside your saved document. Select words and paste a URL to make a link. Use Tab to move through table cells, or `⌥⌘T` to align a table.
+
+For a longer draft, try **Paragraph Focus** and **Typewriter Scrolling** in the View menu.
 
 ### A small plan for today
 

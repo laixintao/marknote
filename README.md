@@ -13,6 +13,9 @@ Built with Swift, AppKit, and WebKit. Your files stay on your Mac. No account, E
 ## A space for everyday writing
 
 - **Native editing** with syntax highlighting, find and replace, undo / redo, Chinese input, and adjustable type size.
+- **Keyboard-first navigation** with a searchable command palette and quick open for open, recent, and nearby Markdown files.
+- **Fewer editing steps** with image paste / drop, relative image assets, URL paste over selected text, and table formatting with Tab navigation.
+- **Comfortable long-form writing** with optional paragraph focus and typewriter scrolling.
 - **Your choice of layout** with an Edit / Split / Preview button group and focus mode.
 - **A clear document structure** with a clickable outline, word and character counts, and cursor position.
 - **Everyday Markdown** including code blocks, quotes, images, tables, task lists, and strikethrough.
@@ -24,6 +27,10 @@ Built with Swift, AppKit, and WebKit. Your files stay on your Mac. No account, E
 | ![Marknote in dark appearance](docs/images/product-dark.png) | ![Marknote in English with only the preview visible](docs/images/product-preview.png) |
 
 These are real AppKit window captures. Run `make screenshots` to regenerate them.
+
+![Search commands without memorising every shortcut](docs/images/product-commands.png)
+
+The new writing tools are on `main` and listed under [Unreleased](CHANGELOG.md). Build from source to try them before the next tagged release. The [five-product research report](docs/research/markdown-tools-2026.md) explains the user feedback and feature choices.
 
 ## Install and run
 
@@ -43,6 +50,9 @@ The app is built at `dist/墨笺.app`. The Markdown parser and translations are 
 | --- | --- |
 | Open `.md` files by default | Marknote → Set as Default Markdown Editor… |
 | Change language | Marknote → Language / 语言 |
+| Search commands / Quick open | `⇧⌘P` / `⇧⌘O` |
+| Insert image / Format table | `⇧⌘I` / `⌥⌘T` |
+| Paragraph focus / Typewriter scrolling | View menu |
 | Choose Edit / Split / Preview | Toolbar button group, or `⌃⌘1` / `⌃⌘2` / `⌃⌘3` |
 | Focus mode | `⌘⇧F` |
 | Save / Find | `⌘S` / `⌘F` |
@@ -69,6 +79,7 @@ Before your first release, commit and push the project to GitHub, configure `ori
 
 - [English user guide](docs/en/README.md) / [中文使用文档](docs/zh-CN/README.md)
 - [English release guide](docs/en/releasing.md) / [中文发布指南](docs/zh-CN/releasing.md)
+- [Markdown tools: research and feature choices](docs/research/markdown-tools-2026.md) / [中文调研摘要](docs/zh-CN/market-research.md)
 - [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Local validation](VALIDATION.md)
 
 Markdown is parsed by bundled [Marked 15.0.12](https://github.com/markedjs/marked/tree/v15.0.12), distributed with its [MIT license](Sources/MarknoteCore/Resources/marked-LICENSE.md). Raw HTML is displayed as text; document scripts never run. Remote images load over the network, and local image access is limited to the document directory. Math, Mermaid, and plugins are not currently supported.

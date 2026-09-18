@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Add a bilingual command palette and quick open for open, recent, and nearby Markdown files. / 新增双语命令面板及已打开、最近和同目录文稿的快速切换。
+- Paste, drop, or choose images and store them as relative assets beside the document. / 粘贴、拖入或选择图片，自动保存为文稿旁的相对路径附件。
+- Add optional paragraph focus and typewriter scrolling, preserving Chinese input and selections. / 新增段落聚焦和打字机滚动，保留中文输入及选区。
+- Format Markdown tables, navigate cells with Tab / Shift-Tab, and append rows with Tab. / 整理 Markdown 表格、用 Tab / Shift-Tab 切换单元格及在末尾增行。
+- Paste a URL onto selected words to create a link; add an explicit plain-text paste command. / 选中文字后粘贴网址生成链接，并新增纯文本粘贴命令。
+- Document the research behind these choices with official sources and dated user feedback from five Markdown tools. / 补充五款 Markdown 工具的官方资料、用户反馈及功能选择依据。
 - Replace the toolbar switches with a single-choice Edit / Split / Preview button group. / 工具栏改为编辑、分栏、预览单选按钮组。
 - Keep the current view mode when navigating the outline, with preview scrolling and deferred navigation while loading. / 目录跳转保留当前模式，并支持预览滚动及加载期间的跳转。
 

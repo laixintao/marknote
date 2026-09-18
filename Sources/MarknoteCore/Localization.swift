@@ -87,6 +87,10 @@ public enum L10n {
         case insert, export, sidebarHelp, boldHelp, italicHelp, linkHelp, focusHelp
         case statistics, position, unsaved, modified, saved, untitled, untitledHeading
         case continueList, boldPlaceholder, italicPlaceholder, linkPlaceholder, codePlaceholder, tableHeading, tableCell
+        case commandPalette, quickOpen, commandSearch, fileSearch, noMatches, paletteHint, paletteRun
+        case openDocumentGroup, recentDocumentGroup, nearbyDocumentGroup
+        case image, insertImage, imageSaveFirst, imageSaveDetail, imageFolderError, imageTypeError, imageSizeError
+        case saveAndInsert, cancel, formatTable, paragraphFocus, typewriterScrolling, pastePlainText
         case unreadableFile, previewNotReady, emptyTitle, emptyMessage, imageUnavailable
     }
 }

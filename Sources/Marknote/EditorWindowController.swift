@@ -7,7 +7,9 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     let editor = MarkdownTextView()
     let preview: WKWebView
     let renderer = MarkdownRenderer()
-    private let documentModel: MarkdownDocument
+    let documentModel: MarkdownDocument
+    var activePalette: CommandPalette?
+    var pendingImageInsertion: ([ImageAttachment], NSRange)?
     private let rootSplit = NSSplitView()
     private let contentSplit = NSSplitView()
     private let sidebar = NSVisualEffectView()
@@ -61,6 +63,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     required init?(coder: NSCoder) { fatalError() }
 
     @objc private func applyLocalization() {
+        activePalette?.dismiss(nil)
         // Update labels in place; retain the NSTextView, composition, undo stack and selection.
         func updateLabels(_ view: NSView) {
             (view as? PaddedLabel)?.refreshLocalization()
@@ -197,6 +200,11 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         editor.isAutomaticTextReplacementEnabled = false
         editor.isAutomaticSpellingCorrectionEnabled = false
         editor.isAutomaticLinkDetectionEnabled = false
+        editor.registerForDraggedTypes([.fileURL, .png, .tiff])
+        editor.onImages = { [weak self] images, range in self?.importImages(images, at: range) }
+        editor.onImportError = { [weak self] error in self?.documentModel.presentError(error) }
+        editor.paragraphFocus = UserDefaults.standard.bool(forKey: "paragraphFocus")
+        editor.typewriterScrolling = UserDefaults.standard.bool(forKey: "typewriterScrolling")
         editor.fontSize = CGFloat(UserDefaults.standard.double(forKey: "editorFontSize").clamped(to: 12...24, fallback: 14))
         editor.backgroundColor = .textBackgroundColor
         editor.insertionPointColor = .systemTeal
@@ -276,7 +284,8 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
             menuItem.menu = NSMenu()
             let entries: [(String, Selector)] = identifier.rawValue == "insert" ? [
                 (L10n.text(.heading), #selector(insertHeading)), (L10n.text(.list), #selector(insertList)), (L10n.text(.task), #selector(insertTask)),
-                (L10n.text(.quote), #selector(insertQuote)), (L10n.text(.code), #selector(insertCode)), (L10n.text(.table), #selector(insertTable))
+                (L10n.text(.quote), #selector(insertQuote)), (L10n.text(.code), #selector(insertCode)), (L10n.text(.table), #selector(insertTable)),
+                (L10n.text(.insertImage), #selector(insertImage))
             ] : [(L10n.text(.exportHTML), #selector(exportHTML)), (L10n.text(.exportPDF), #selector(exportPDF))]
             for (title, action) in entries {
                 let entry = NSMenuItem(title: title, action: action, keyEquivalent: "")
@@ -335,6 +344,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
 
     func textViewDidChangeSelection(_ notification: Notification) {
         updatePosition()
+        editor.updateWritingFocus()
     }
 
     private func updatePosition() {
@@ -473,7 +483,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         rootSplit.adjustSubviews()
         if !sidebar.isHidden { rootSplit.setPosition(205, ofDividerAt: 0) }
     }
-    private func apply(_ edit: TextEdit, name: String) {
+    func apply(_ edit: TextEdit, name: String) {
         if mode == 2 { setMode(1) }
         window?.makeFirstResponder(editor)
         editor.apply(edit, name: name)
@@ -569,6 +579,9 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         case #selector(showSplit): menuItem.state = mode == 1 ? .on : .off
         case #selector(showPreview): menuItem.state = mode == 2 ? .on : .off
         case #selector(toggleFocus): menuItem.state = focused ? .on : .off
+        case #selector(toggleParagraphFocus): menuItem.state = editor.paragraphFocus ? .on : .off
+        case #selector(toggleTypewriterScrolling): menuItem.state = editor.typewriterScrolling ? .on : .off
+        case #selector(formatTable): return MarkdownTable.format(editor.string, selection: editor.selectedRange()) != nil
         case #selector(toggleSidebar): menuItem.state = sidebar.isHidden ? .off : .on
         default: break
         }
