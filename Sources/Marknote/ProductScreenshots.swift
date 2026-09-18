@@ -42,6 +42,11 @@ import MarknoteCore
                     if previewOnly { controller.showPreview() } else { controller.showSplit() }
                     controller.refreshPreview()
                     try await SmokeTest.waitForPreview(controller)
+                    // Closing the previous sample can finish asynchronously while WebKit
+                    // loads; restore the new window's active appearance before capturing.
+                    NSApp.activate(ignoringOtherApps: true)
+                    window.makeKeyAndOrderFront(nil)
+                    try await Task.sleep(nanoseconds: 200_000_000)
                     try await SmokeTest.screenshot(controller, to: directory.appendingPathComponent(filename))
                     print("Captured: \(filename)")
                 }

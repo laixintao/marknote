@@ -45,11 +45,11 @@ Documents have separate windows and support system tabs. Switching language or l
 
 ## Edit, preview, and focus
 
-The Edit and Preview toolbar buttons independently control the two panes. Enable both for split view. Disable one to expand the other; disabling the last visible pane reveals the other pane.
+The toolbar has a single-choice **Edit / Split / Preview** button group. Edit shows only the editor, Split shows both panes, and Preview shows only the rendered document. Selecting the current mode again keeps it active.
 
-The View menu and toolbar stay in sync. Each window has its own layout, retained for that window's lifetime. Focus mode hides the outline and preview; leaving it restores the previous layout. Enabling Preview while focused exits focus mode and restores split view.
+The View menu and toolbar stay in sync. Each window has its own layout, retained for that window's lifetime. Focus mode hides the outline and preview; leaving it restores the previous layout. Choosing Split or Preview while focused exits focus mode and opens the selected layout.
 
-The outline lists document headings and lets you jump to their editing position. Headings inside fenced code blocks are excluded. Adjust the editor font size from View; your font size preference is saved.
+The outline lists document headings. Clicking a heading keeps the current mode: Edit jumps in the editor, Preview scrolls the rendered document, and Split locates the heading in both panes. Headings inside fenced code blocks are excluded. Adjust the editor font size from View; your font size preference is saved.
 
 ## Language and appearance
 

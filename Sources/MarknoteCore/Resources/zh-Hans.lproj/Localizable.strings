@@ -70,9 +70,10 @@
 "previewDetail" = "与你的文字同步";
 "editorAccessibility" = "Markdown 编辑器";
 "previewAccessibility" = "Markdown 实时预览";
-"modesAccessibility" = "编辑与预览显示开关";
+"modesAccessibility" = "显示模式";
 "editorToggle" = "编辑";
 "previewToggle" = "预览";
+"splitMode" = "分栏";
 "editorToggleHelp" = "显示或隐藏编辑区（至少保留一个区域）";
 "previewToggleHelp" = "显示或隐藏预览区（至少保留一个区域）";
 "insert" = "插入";

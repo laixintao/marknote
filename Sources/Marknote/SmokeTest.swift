@@ -99,6 +99,7 @@ import MarknoteCore
             editor.insertText("中文输入🌱", replacementRange: editor.markedRange())
             try check(!editor.hasMarkedText() && document.text.hasSuffix("中文输入🌱"), "输入法提交中文与 emoji 后同步文稿")
             try await verifyLanguageAndPanes(document: document, controller: controller, directory: directory) { try check($0, $1) }
+            try await verifyOutlineNavigation { try check($0, $1) }
             controller.showEditor()
             controller.showPreview()
             controller.showSplit()
@@ -176,11 +177,17 @@ import MarknoteCore
         let originalUndo = editor.undoManager?.undoActionName
         let originalEdited = document.isDocumentEdited
         let originalURL = document.fileURL
-        func button(_ id: String, in window: EditorWindowController) throws -> NSButton {
-            guard let button = window.window?.toolbar?.items.first(where: { $0.itemIdentifier.rawValue == id })?.view as? NSButton else {
-                throw Failure(message: "Missing toolbar switch: \(id)")
+        func modeGroup(in window: EditorWindowController) throws -> NSSegmentedControl {
+            guard let group = window.window?.toolbar?.items.first(where: { $0.itemIdentifier.rawValue == "mode" })?.view as? NSSegmentedControl else {
+                throw Failure(message: "Missing toolbar mode group")
             }
-            return button
+            return group
+        }
+        func selectMode(_ index: Int, in group: NSSegmentedControl) throws {
+            group.selectedSegment = index
+            guard let action = group.action, group.sendAction(action, to: group.target) else {
+                throw Failure(message: "Mode group did not dispatch")
+            }
         }
         func chooseLanguage(_ language: AppLanguage) throws {
             guard let menu = NSApp.mainMenu?.items.first?.submenu?.items.first(where: { $0.identifier?.rawValue == "language" })?.submenu,
@@ -194,35 +201,30 @@ import MarknoteCore
             return value + view.subviews.flatMap(labels)
         }
         controller.showSplit()
-        let editSwitch = try button("editor", in: controller)
-        let previewSwitch = try button("preview", in: controller)
-        try check(editSwitch.state == .on && previewSwitch.state == .on, "Edit 与 Preview 是默认开启的独立工具栏开关")
-        editSwitch.performClick(nil)
-        try check(!controller.isEditorVisible && controller.isPreviewVisible && editSwitch.state == .off && previewSwitch.state == .on, "关闭 Edit 后仅显示 Preview 并同步按钮状态")
-        previewSwitch.performClick(nil)
-        try check(controller.isEditorVisible && !controller.isPreviewVisible && editSwitch.state == .on && previewSwitch.state == .off, "关闭最后一个区域时自动显示另一区域")
-        previewSwitch.performClick(nil)
-        try check(controller.isEditorVisible && controller.isPreviewVisible, "重新开启 Preview 恢复双栏")
-        previewSwitch.performClick(nil)
-        try check(controller.isEditorVisible && !controller.isPreviewVisible, "关闭 Preview 后保留 Edit")
-        editSwitch.performClick(nil)
-        try check(!controller.isEditorVisible && controller.isPreviewVisible, "仅 Edit 可见时关闭 Edit 自动切换到 Preview")
-        editSwitch.performClick(nil)
-        try check(controller.isEditorVisible && controller.isPreviewVisible, "重新开启 Edit 恢复双栏")
-        let menuItem = NSMenuItem(title: "", action: #selector(EditorWindowController.togglePreviewPane), keyEquivalent: "p")
-        try check(editor.tryToPerform(menuItem.action!, with: menuItem), "窗口响应链支持 Preview 开关命令")
+        let group = try modeGroup(in: controller)
+        try check(group.segmentCount == 3 && group.trackingMode == .selectOne && group.selectedSegment == 1, "模式按钮组默认单选分栏模式")
+        try selectMode(0, in: group)
+        try check(controller.isEditorVisible && !controller.isPreviewVisible && group.selectedSegment == 0, "选择编辑模式只显示编辑器")
+        try selectMode(2, in: group)
+        try check(!controller.isEditorVisible && controller.isPreviewVisible && group.selectedSegment == 2, "选择预览模式只显示预览")
+        try selectMode(2, in: group)
+        try check(!controller.isEditorVisible && controller.isPreviewVisible && group.selectedSegment == 2, "重复选择当前模式不会关闭区域或切换模式")
+        try selectMode(1, in: group)
+        try check(controller.isEditorVisible && controller.isPreviewVisible && group.selectedSegment == 1, "选择分栏模式同时显示编辑器和预览")
+        let menuItem = NSMenuItem(title: "", action: #selector(EditorWindowController.showEditor), keyEquivalent: "1")
+        try check(editor.tryToPerform(menuItem.action!, with: menuItem), "窗口响应链支持编辑模式命令")
         _ = controller.validateMenuItem(menuItem)
-        try check(!controller.isPreviewVisible && menuItem.state == .off, "显示菜单勾选状态与工具栏开关一致")
+        try check(!controller.isPreviewVisible && menuItem.state == .on && group.selectedSegment == 0, "菜单命令同步按钮组的单选状态")
         controller.showPreview()
         controller.toggleFocus()
-        try check(controller.isEditorVisible && !controller.isPreviewVisible, "专注模式显示编辑器")
+        try check(controller.isEditorVisible && !controller.isPreviewVisible && group.selectedSegment == 0, "专注模式显示编辑器并同步按钮组")
         controller.toggleFocus()
-        try check(!controller.isEditorVisible && controller.isPreviewVisible, "退出专注模式恢复原有区域状态")
+        try check(!controller.isEditorVisible && controller.isPreviewVisible && group.selectedSegment == 2, "退出专注模式恢复原有显示模式")
         controller.toggleFocus()
-        previewSwitch.performClick(nil)
+        try selectMode(1, in: group)
         let focusItem = NSMenuItem(title: "", action: #selector(EditorWindowController.toggleFocus), keyEquivalent: "")
         _ = controller.validateMenuItem(focusItem)
-        try check(controller.isEditorVisible && controller.isPreviewVisible && focusItem.state == .off, "专注模式中开启 Preview 后恢复双栏并退出专注")
+        try check(controller.isEditorVisible && controller.isPreviewVisible && focusItem.state == .off, "专注模式中选择分栏后退出专注")
 
         let blank = try documentController.makeUntitledDocument(ofType: MarkdownDocument.typeName) as! MarkdownDocument
         documentController.addDocument(blank)
@@ -234,10 +236,10 @@ import MarknoteCore
         try check(blankController.isEditorVisible && blankController.isPreviewVisible, "各窗口独立保存编辑和预览的显示状态")
         try chooseLanguage(.english)
         try check(NSApp.mainMenu?.items.contains(where: { $0.title == "File" }) == true && controller.window?.subtitle == "A little space to think", "语言菜单切换后主菜单与当前窗口立即变为英文")
-        try check(try button("editor", in: blankController).title == "Edit" && button("preview", in: controller).title == "Preview", "所有已打开窗口的工具栏同时切换语言")
+        try check(try modeGroup(in: blankController).label(forSegment: 0) == "Edit" && group.label(forSegment: 1) == "Split" && group.label(forSegment: 2) == "Preview", "所有已打开窗口的模式按钮组同时切换语言")
         try check(blank.displayName.hasPrefix("Untitled") && labels(blankController.window!.contentView!).contains("Outline"), "未命名文稿标题和侧栏跟随界面语言")
         try check(labels(controller.window!.contentView!).contains(where: { $0.hasPrefix("Words: ") }) && labels(controller.window!.contentView!).contains(where: { $0.hasPrefix("Line ") }), "字数统计和光标位置使用英文格式")
-        try check(!controller.isEditorVisible && controller.isPreviewVisible && editSwitch.state == .off && previewSwitch.state == .on, "语言切换保留窗口布局和开关状态")
+        try check(!controller.isEditorVisible && controller.isPreviewVisible && group.selectedSegment == 2, "语言切换保留窗口布局和模式选择")
         try await waitForPreview(blankController)
         let empty = try await blankController.preview.evaluateJavaScript("({language:document.documentElement.lang,text:document.body.innerText})") as? [String: String]
         try check(empty?["language"] == "en" && empty?["text"]?.contains("It starts with a word.") == true, "空白预览和 HTML 语言属性即时切换为英文")
@@ -255,11 +257,59 @@ import MarknoteCore
         try await waitForPreview(controller)
         try await screenshot(controller, to: directory.appendingPathComponent("window-english.png"))
         try chooseLanguage(.simplifiedChinese)
-        try check(NSApp.mainMenu?.items.contains(where: { $0.title == "文件" }) == true && editSwitch.title == "编辑" && blank.displayName.hasPrefix("未命名"), "切回中文后所有窗口和菜单恢复中文")
+        try check(NSApp.mainMenu?.items.contains(where: { $0.title == "文件" }) == true && group.label(forSegment: 0) == "编辑" && group.label(forSegment: 1) == "分栏" && blank.displayName.hasPrefix("未命名"), "切回中文后所有窗口和菜单恢复中文")
         try chooseLanguage(.system)
         try check(L10n.shared.selection == .system, "语言菜单支持恢复跟随系统")
         try chooseLanguage(.simplifiedChinese)
         try check(document.text == originalText, "多次语言切换始终保留原文内容")
+    }
+
+    private static func verifyOutlineNavigation(check: (Bool, String) throws -> Void) async throws {
+        let document = try documentController.makeUntitledDocument(ofType: MarkdownDocument.typeName) as! MarkdownDocument
+        // Include nested and duplicate headings: navigation must find the selected
+        // top-level heading, not the first matching text or a heading inside a quote.
+        let paragraphs = String(repeating: "正文 paragraph 中文与 emoji 🌱。\n\n", count: 35)
+        document.text = "# 重复标题\n\n> ## 引用内标题\n\n" + paragraphs + "## **目标标题**\n\n" + paragraphs + "# 重复标题\n\n" + paragraphs + "Setext heading\n==============\n\n" + paragraphs
+        let original = document.text
+        documentController.addDocument(document)
+        document.makeWindowControllers()
+        document.showWindows()
+        defer { document.updateChangeCount(.changeCleared); document.close() }
+        let controller = document.windowControllers.first as! EditorWindowController
+        func table(in view: NSView) -> NSTableView? {
+            if let table = view as? NSTableView { return table }
+            return view.subviews.lazy.compactMap { table(in: $0) }.first
+        }
+        guard let outline = table(in: controller.window!.contentView!), let action = outline.action else {
+            throw Failure(message: "Missing outline table")
+        }
+        func clickHeading(_ row: Int) throws {
+            outline.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            try check(outline.sendAction(action, to: outline.target), "目录点击通过真实表格动作跳转")
+        }
+        func headingIsVisible(_ index: Int) async throws -> Bool {
+            let value = try await controller.preview.evaluateJavaScript("(() => { const r = document.querySelectorAll('article > :is(h1,h2,h3,h4,h5,h6)')[\(index)].getBoundingClientRect(); return r.top >= 0 && r.top < 80; })()")
+            return value as? Bool == true
+        }
+        try await waitForPreview(controller)
+        let selection = controller.editor.selectedRange()
+        controller.showPreview()
+        try clickHeading(2)
+        try check(!controller.isEditorVisible && controller.isPreviewVisible && controller.editor.selectedRange() == selection, "预览模式点击目录保留布局和隐藏编辑器选区")
+        try check(try await headingIsVisible(2), "重复标题跳到预览中的正确位置并跳过引用内标题")
+        controller.refreshPreview()
+        try clickHeading(3)
+        try await waitForPreview(controller)
+        try check(try await headingIsVisible(3) && !controller.isEditorVisible, "预览加载期间点击目录会在加载后定位 Setext 标题并保留预览模式")
+        controller.showSplit()
+        try clickHeading(1)
+        let target = MarkdownText.headings(in: original)[1].range.location
+        try check(controller.isEditorVisible && controller.isPreviewVisible && controller.editor.selectedRange().location == target, "分栏模式点击目录定位编辑器并保留分栏")
+        try check(try await headingIsVisible(1), "分栏模式同时定位对应预览标题")
+        controller.showEditor()
+        try clickHeading(0)
+        try check(controller.isEditorVisible && !controller.isPreviewVisible && controller.editor.selectedRange().location == 0, "编辑模式点击目录保持仅编辑布局")
+        try check(document.text == original && !document.isDocumentEdited, "目录导航不修改文稿内容或保存状态")
     }
 
     private static func settleEditing(_ editor: NSTextView, document: MarkdownDocument) async throws {

@@ -1,5 +1,10 @@
 # Changelog / 更新记录
 
+## [Unreleased]
+
+- Replace the toolbar switches with a single-choice Edit / Split / Preview button group. / 工具栏改为编辑、分栏、预览单选按钮组。
+- Keep the current view mode when navigating the outline, with preview scrolling and deferred navigation while loading. / 目录跳转保留当前模式，并支持预览滚动及加载期间的跳转。
+
 ## [1.1.0] - 2026-09-18
 
 ### Added / 新增

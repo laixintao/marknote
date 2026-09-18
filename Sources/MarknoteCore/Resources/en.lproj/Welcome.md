@@ -10,7 +10,7 @@ Write in the editor and see your words take shape in the preview. Start with an 
 
 - Focus on your content with **Markdown**
 - Jump between sections using the outline
-- Use the **Edit** and **Preview** switches to show either pane or both
+- Choose **Edit**, **Split**, or **Preview** in the toolbar button group
 - Press `⌘ S` to save your words on your Mac
 
 ## Turn ideas into words

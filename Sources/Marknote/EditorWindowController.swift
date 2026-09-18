@@ -19,8 +19,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     private let position = PaddedLabel("")
     private let saveStatus = PaddedLabel(.unsaved, color: .tertiaryLabelColor)
     private let outlineCount = PaddedLabel("0", size: 10, weight: .medium, color: .tertiaryLabelColor)
-    private let editorToggle = NSButton(title: "", target: nil, action: nil)
-    private let previewToggle = NSButton(title: "", target: nil, action: nil)
+    private let modeControl = NSSegmentedControl()
     private var headings: [Heading] = []
     private var pendingUpdate: DispatchWorkItem?
     private var mode = 1
@@ -29,6 +28,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     private var focused = false
     private var previewScroll: Double = 0
     private var previewRevision = 0
+    private var pendingPreviewHeading: Int?
     var previewReady = false
     var isEditorVisible: Bool { !sourcePane.isHidden }
     var isPreviewVisible: Bool { !previewPane.isHidden }
@@ -233,31 +233,38 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        ["sidebar", .flexibleSpace, "bold", "italic", "link", "insert", .flexibleSpace, "editor", "preview", "focus", "export"]
+        ["sidebar", .flexibleSpace, "bold", "italic", "link", "insert", .flexibleSpace, "mode", "focus", "export"]
     }
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { toolbarDefaultItemIdentifiers(toolbar) }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         let item = NSToolbarItem(itemIdentifier: identifier)
-        if identifier.rawValue == "editor" || identifier.rawValue == "preview" {
-            let isEditor = identifier.rawValue == "editor"
-            let button = isEditor ? editorToggle : previewToggle
-            let action = isEditor ? #selector(toggleEditorPane) : #selector(togglePreviewPane)
-            button.title = L10n.text(isEditor ? .editorToggle : .previewToggle)
-            button.setButtonType(.pushOnPushOff)
-            button.bezelStyle = .texturedRounded
-            button.image = NSImage(systemSymbolName: isEditor ? "square.and.pencil" : "eye", accessibilityDescription: nil)
-            button.imagePosition = .imageLeading
-            button.target = self
-            button.action = action
-            button.state = (isEditor ? isEditorVisible : isPreviewVisible) ? .on : .off
-            button.toolTip = L10n.text(isEditor ? .editorToggleHelp : .previewToggleHelp)
-            button.setAccessibilityLabel(button.title)
-            item.view = button
-            item.label = button.title
-            item.toolTip = button.toolTip
-            let menuItem = NSMenuItem(title: button.title, action: action, keyEquivalent: "")
-            menuItem.target = self
+        if identifier.rawValue == "mode" {
+            modeControl.segmentCount = 3
+            modeControl.trackingMode = .selectOne
+            modeControl.segmentStyle = .texturedRounded
+            modeControl.target = self
+            modeControl.action = #selector(changeMode(_:))
+            modeControl.setAccessibilityLabel(L10n.text(.modesAccessibility))
+            let modes: [(L10n.Key, L10n.Key, String, Selector)] = [
+                (.editorToggle, .editorOnly, "square.and.pencil", #selector(showEditor)),
+                (.splitMode, .splitView, "rectangle.split.2x1", #selector(showSplit)),
+                (.previewToggle, .previewOnly, "eye", #selector(showPreview))
+            ]
+            let menuItem = NSMenuItem(title: L10n.text(.modesAccessibility), action: nil, keyEquivalent: "")
+            menuItem.submenu = NSMenu()
+            for (index, entry) in modes.enumerated() {
+                modeControl.setLabel(L10n.text(entry.0), forSegment: index)
+                modeControl.setImage(NSImage(systemSymbolName: entry.2, accessibilityDescription: nil), forSegment: index)
+                modeControl.setToolTip(L10n.text(entry.1), forSegment: index)
+                let choice = NSMenuItem(title: L10n.text(entry.1), action: entry.3, keyEquivalent: "")
+                choice.target = self
+                menuItem.submenu?.addItem(choice)
+            }
+            modeControl.selectedSegment = mode
+            modeControl.sizeToFit()
+            item.view = modeControl
+            item.label = L10n.text(.modesAccessibility)
             item.menuFormRepresentation = menuItem
             return item
         }
@@ -365,7 +372,8 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         previewReady = true
-        webView.evaluateJavaScript("window.scrollTo(0, \(previewScroll))", completionHandler: nil)
+        if pendingPreviewHeading != nil { scrollPreviewToHeading() }
+        else { webView.evaluateJavaScript("window.scrollTo(0, \(previewScroll))", completionHandler: nil) }
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -389,12 +397,33 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
 
     @objc func selectHeading() {
         guard headings.indices.contains(outline.selectedRow) else { return }
-        if mode == 2 { setMode(1) }
-        let range = headings[outline.selectedRow].range
-        window?.makeFirstResponder(editor)
-        editor.setSelectedRange(NSRange(location: range.location, length: 0))
-        editor.scrollRangeToVisible(range)
-        editor.showFindIndicator(for: range)
+        if isEditorVisible {
+            let range = headings[outline.selectedRow].range
+            window?.makeFirstResponder(editor)
+            editor.setSelectedRange(NSRange(location: range.location, length: 0))
+            editor.scrollRangeToVisible(range)
+            editor.showFindIndicator(for: range)
+        }
+        if isPreviewVisible {
+            pendingPreviewHeading = outline.selectedRow
+            scrollPreviewToHeading()
+        }
+    }
+
+    private func scrollPreviewToHeading() {
+        guard previewReady, let index = pendingPreviewHeading else { return }
+        pendingPreviewHeading = nil
+        let revision = previewRevision
+        // The outline contains top-level headings. Indexing those also distinguishes
+        // duplicate titles and skips headings inside quotes and list items.
+        let script = """
+        document.querySelectorAll('article > :is(h1,h2,h3,h4,h5,h6)')[\(index)]?.scrollIntoView({behavior:'instant',block:'start'});
+        window.scrollY;
+        """
+        preview.evaluateJavaScript(script) { [weak self] value, _ in
+            guard let self, self.previewRevision == revision else { return }
+            if let y = value as? Double { self.previewScroll = y }
+        }
     }
 
     @objc func toggleSidebar() {
@@ -411,7 +440,9 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     @objc func showEditor() { setMode(0) }
     @objc func showSplit() { setMode(1) }
     @objc func showPreview() { setMode(2) }
+    @objc private func changeMode(_ sender: NSSegmentedControl) { setMode(sender.selectedSegment) }
     func setMode(_ value: Int) {
+        guard (0...2).contains(value) else { return }
         if focused && value != 0 {
             focused = false
             sidebar.isHidden = !previousSidebar
@@ -421,8 +452,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         mode = value
         sourcePane.isHidden = value == 2
         previewPane.isHidden = value == 0
-        editorToggle.state = isEditorVisible ? .on : .off
-        previewToggle.state = isPreviewVisible ? .on : .off
+        modeControl.selectedSegment = value
         contentSplit.adjustSubviews()
         if value == 1 { contentSplit.setPosition(contentSplit.bounds.width / 2, ofDividerAt: 0) }
         if value != 2 { window?.makeFirstResponder(editor) }

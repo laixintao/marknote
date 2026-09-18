@@ -83,7 +83,7 @@ public enum L10n {
         case noRecentDocuments, clearRecent
         case outlineHint, focusHint, sourceHeader, sourceDetail, previewHeader, previewDetail
         case editorAccessibility, previewAccessibility, modesAccessibility
-        case editorToggle, previewToggle, editorToggleHelp, previewToggleHelp
+        case editorToggle, previewToggle, splitMode, editorToggleHelp, previewToggleHelp
         case insert, export, sidebarHelp, boldHelp, italicHelp, linkHelp, focusHelp
         case statistics, position, unsaved, modified, saved, untitled, untitledHeading
         case continueList, boldPlaceholder, italicPlaceholder, linkPlaceholder, codePlaceholder, tableHeading, tableCell

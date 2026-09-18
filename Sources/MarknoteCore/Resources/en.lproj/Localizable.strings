@@ -70,9 +70,10 @@
 "previewDetail" = "In sync with your words";
 "editorAccessibility" = "Markdown editor";
 "previewAccessibility" = "Live Markdown preview";
-"modesAccessibility" = "Editor and preview visibility";
+"modesAccessibility" = "View mode";
 "editorToggle" = "Edit";
 "previewToggle" = "Preview";
+"splitMode" = "Split";
 "editorToggleHelp" = "Show or hide the editor (one pane stays visible)";
 "previewToggleHelp" = "Show or hide the preview (one pane stays visible)";
 "insert" = "Insert";

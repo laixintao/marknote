@@ -13,7 +13,7 @@ Built with Swift, AppKit, and WebKit. Your files stay on your Mac. No account, E
 ## A space for everyday writing
 
 - **Native editing** with syntax highlighting, find and replace, undo / redo, Chinese input, and adjustable type size.
-- **Your choice of layout** with independent Edit and Preview switches, split view, reading, and focus mode.
+- **Your choice of layout** with an Edit / Split / Preview button group and focus mode.
 - **A clear document structure** with a clickable outline, word and character counts, and cursor position.
 - **Everyday Markdown** including code blocks, quotes, images, tables, task lists, and strikethrough.
 - **Files you own** with UTF-8 documents, multiple windows, autosave, HTML export, and PDF export.
@@ -43,13 +43,13 @@ The app is built at `dist/墨笺.app`. The Markdown parser and translations are 
 | --- | --- |
 | Open `.md` files by default | Marknote → Set as Default Markdown Editor… |
 | Change language | Marknote → Language / 语言 |
-| Toggle Edit / Preview | Toolbar switches, or `⌘⌥E` / `⌘⌥P` |
+| Choose Edit / Split / Preview | Toolbar button group, or `⌃⌘1` / `⌃⌘2` / `⌃⌘3` |
 | Focus mode | `⌘⇧F` |
 | Save / Find | `⌘S` / `⌘F` |
 | Bold / Italic / Link | `⌘B` / `⌘I` / `⌘K` |
 | Export PDF | `⌘⇧E` |
 
-Switching language or layout preserves your document, selection, and undo history. Turning off the last visible pane reveals the other pane. See the [user guide](docs/en/README.md) for all shortcuts and document behavior.
+Switching language or layout preserves your document, selection, and undo history. Outline navigation keeps the current mode and jumps within the visible panes. See the [user guide](docs/en/README.md) for all shortcuts and document behavior.
 
 ## Develop, verify, release
 
