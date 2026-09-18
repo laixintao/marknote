@@ -1,0 +1,90 @@
+# Marknote user guide
+
+[Project home](../../README.en.md) · [简体中文](../zh-CN/README.md) · [Release guide](releasing.md)
+
+![Marknote's native editor and preview in English](../images/product-english.png)
+
+## Install
+
+Requires macOS 13 or later. On this repository's Releases page, choose the package matching the processor shown in About This Mac:
+
+| Mac | File |
+| --- | --- |
+| Apple Silicon (M series) | `Marknote-<version>-macos-arm64.zip` |
+| Intel | `Marknote-<version>-macos-x86_64.zip` |
+
+Extract the ZIP, move `墨笺.app` to Applications, and open it. Download `SHA256SUMS.txt` to compare the matching entry with `shasum -a 256 package.zip`. If you downloaded both packages, run `shasum -a 256 -c SHA256SUMS.txt`.
+
+Default GitHub builds are ad-hoc signed and are not Apple-notarized. macOS may block the first launch; follow the system prompt and [Apple's app security guidance](https://support.apple.com/102445), or build locally on your Mac. Optional Developer ID signing and notarization are covered in the [release guide](releasing.md).
+
+## Build from source
+
+Install Swift 6.1+ through Xcode or Command Line Tools, Python 3.9+, and use the Make included with macOS:
+
+```sh
+make run
+```
+
+The app is generated at `dist/墨笺.app`. For a debug build, use `make build CONFIGURATION=debug`. You can open `Package.swift` in Xcode; use the packaged `.app` for document associations and application menus. Resources are bundled and no Swift dependency downloads are required.
+
+## Write and save
+
+The first launch opens an editable guide. Open it again from Help → Marknote User Guide. Use `⌘N` for a new document and `⌘O` to open a file.
+
+Supported files include UTF-8 `.md`, `.markdown`, `.mdown`, `.mkd`, and plain text. UTF-8 byte-order marks are removed when reading. New documents need a location on their first save. Existing documents use NSDocument autosave in place; you can also press `⌘S`. Closing a document with unsaved changes prompts you to save, and Cancel returns to editing.
+
+Documents have separate windows and support system tabs. Switching language or layout preserves the editor, text, selection, and undo history.
+
+## Edit, preview, and focus
+
+The Edit and Preview toolbar buttons independently control the two panes. Enable both for split view. Disable one to expand the other; disabling the last visible pane reveals the other pane.
+
+The View menu and toolbar stay in sync. Each window has its own layout, retained for that window's lifetime. Focus mode hides the outline and preview; leaving it restores the previous layout. Enabling Preview while focused exits focus mode and restores split view.
+
+The outline lists document headings and lets you jump to their editing position. Headings inside fenced code blocks are excluded. Adjust the editor font size from View; your font size preference is saved.
+
+## Language and appearance
+
+Choose **Marknote → Language / 语言 → System Default, 简体中文, or English**. The default follows supported languages in your system preference list, falling back to English when none are supported.
+
+Your choice is saved, and all open windows update their app menus, toolbar labels, hints, and status text immediately. Apple-provided panels and system text adopt the new language after restarting the app. Existing document content, including an open guide, is never translated; open a new guide from Help to use the current language.
+
+Light and dark appearance follow macOS settings.
+
+![Preview-only reading layout](../images/product-preview.png)
+
+## Shortcuts
+
+| Action | Shortcut |
+| --- | --- |
+| New / Open / Save | `⌘N` / `⌘O` / `⌘S` |
+| Save As | `⌘⇧S` |
+| Undo / Redo | `⌘Z` / `⌘⇧Z` |
+| Bold / Italic / Link | `⌘B` / `⌘I` / `⌘K` |
+| Find and replace | `⌘F` |
+| Toggle outline | `⌘⌥0` |
+| Toggle Edit / Preview | `⌘⌥E` / `⌘⌥P` |
+| Editor only / Split / Preview only | `⌃⌘1` / `⌃⌘2` / `⌃⌘3` |
+| Focus mode | `⌘⇧F` |
+| Heading 1 | `⌘⌥1` |
+| Bulleted list / Task list | `⌘⇧L` / `⌘⇧T` |
+| Export PDF | `⌘⇧E` |
+
+Return continues lists, tasks, and quotes. Return on an empty list item exits the list. The Insert menu also provides tables, code blocks, and quotes.
+
+## Export, privacy, and limits
+
+The File menu exports standalone HTML and PDF. PDF uses a continuous long-page layout. HTML exports embed accessible local images.
+
+The app needs no account and does not upload documents. Writing and parsing work offline. HTTP(S) images in documents send requests to their image servers; external links open in your default browser.
+
+Raw HTML is displayed as text, and document scripts never execute. Relative image paths can access PNG, JPEG, GIF, and WebP files only inside the document directory and its descendants, up to 20 MB per image. Save a document before using relative images. Math, Mermaid, cloud sync, plugins, and in-app automatic updates are not included.
+
+## Troubleshooting
+
+- Cannot open a file: check that it contains UTF-8 text.
+- Local image is missing: save the document and check its relative path, format, and size.
+- System panels use the old language: save your work, quit, and reopen the app.
+- No release download exists: the maintainer needs to complete the [first release](releasing.md).
+
+For a bug report, include macOS version, chip type, app version, reproduction steps, and a minimal sample with private content removed. See [Contributing](../../CONTRIBUTING.md) to work on the app.

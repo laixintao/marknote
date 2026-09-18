@@ -1,0 +1,77 @@
+name: Build and test macOS
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ''
+permissions:
+  contents: read
+jobs:
+  lint:
+    name: Workflow validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - name: Check Actions with actionlint
+        run: docker run --rm --volume "$PWD:/repo:ro" --workdir /repo rhysd/actionlint:1.7.12 -color
+  macos:
+    needs: lint
+    name: macOS / ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - name: Verify toolchain and architecture
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: |
+          swift --version
+          test "$(uname -m)" = "$EXPECTED_ARCH"
+      - name: Check documentation and release tooling
+        run: make check
+      - name: Test Markdown and localization
+        run: make test
+      - name: Test native windows, documents, and preview
+        run: make smoke
+      - name: Package and verify application
+        run: make package
+      - name: Upload application and checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: marknote-package-${{ matrix.arch }}
+          path: dist/releases/*
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+      - name: Upload integration reports and screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: marknote-checks-${{ matrix.arch }}
+          path: |
+            .build/smoke-*/report.txt
+            .build/smoke-*/failure.txt
+            .build/smoke-*/*.log
+            .build/smoke-*/*.png
+            .build/smoke-*/preview.pdf
+            .build/smoke-*/preview.html
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
