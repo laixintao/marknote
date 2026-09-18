@@ -26,7 +26,7 @@
 
 截图来自真实 AppKit 窗口，可通过 `make screenshots` 重新生成。
 
-新增写作工具已进入 `main`，记录在 [Unreleased](CHANGELOG.md) 中；下次正式发布前，可从源码体验。[五款产品调研摘要](docs/zh-CN/market-research.md)说明了用户反馈和功能选择。
+新增写作工具已包含在 [1.2.0 版本](CHANGELOG.md)中。[五款产品调研摘要](docs/zh-CN/market-research.md)说明了用户反馈和功能选择。
 
 ## 安装与运行
 

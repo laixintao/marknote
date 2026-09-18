@@ -30,7 +30,7 @@ These are real AppKit window captures. Run `make screenshots` to regenerate them
 
 ![Search commands without memorising every shortcut](docs/images/product-commands.png)
 
-The new writing tools are on `main` and listed under [Unreleased](CHANGELOG.md). Build from source to try them before the next tagged release. The [five-product research report](docs/research/markdown-tools-2026.md) explains the user feedback and feature choices.
+The writing tools are included in [version 1.2.0](CHANGELOG.md). The [five-product research report](docs/research/markdown-tools-2026.md) explains the user feedback and feature choices.
 
 ## Install and run
 

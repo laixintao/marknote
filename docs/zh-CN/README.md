@@ -75,7 +75,7 @@ make run
 
 ![段落聚焦与打字机滚动](../images/product-writing.png)
 
-以上三节的新工具已在 `main` 源码构建中提供，待正式发布的改动见 [Unreleased](../../CHANGELOG.md)。
+以上三节的新工具在 [1.2.0 版本](../../CHANGELOG.md)中加入。
 
 ## 语言和外观
 

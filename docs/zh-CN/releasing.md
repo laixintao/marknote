@@ -29,10 +29,10 @@ gh auth login
 make release
 ```
 
-命令从 `Resources/Info.plist` 读取版本（当前为 `1.1.0`），依次执行：
+命令从 `Resources/Info.plist` 读取版本（当前为 `1.2.0`），依次执行：
 
 1. 检查干净的工作区、GitHub 远端、当前提交、Release 工作流、更新记录及版本标签。
-2. 创建注释标签 `v1.1.0` 并推送，自动触发 Release 工作流。
+2. 创建注释标签 `v1.2.0` 并推送，自动触发 Release 工作流。
 3. GitHub 在 `macos-15`（arm64）和 `macos-15-intel`（x86_64）上分别检查文档、运行核心和原生窗口测试、构建并验证签名、打包。
 4. 发布 job 检查两个安装包的 SHA-256、内嵌版本及实际 Mach-O 架构；从更新记录生成双语发布说明。
 5. 创建 Release 草稿，上传两个架构的 DMG、ZIP 和 `SHA256SUMS.txt`，全部成功后公开发布。终端等待 CI 完成并输出 Release 链接。
@@ -43,7 +43,7 @@ GitHub 官方的 [runner 列表](https://docs.github.com/en/actions/reference/ru
 
 ```sh
 make release-check
-make release VERSION=1.1.0
+make release VERSION=1.2.0
 ```
 
 `VERSION` 在发布和打包时是校验值，不会静默修改源文件。当前版本只接受 `X.Y.Z` 的稳定版本号。
@@ -51,11 +51,11 @@ make release VERSION=1.1.0
 ## 准备下一个版本
 
 ```sh
-make version VERSION=1.2.0
-# 编辑 CHANGELOG.md，添加非空的 ## [1.2.0] 更新记录
+make version VERSION=1.3.0
+# 编辑 CHANGELOG.md，添加非空的 ## [1.3.0] 更新记录
 make verify
 git add Resources/Info.plist CHANGELOG.md
-git commit -m "Release 1.2.0"
+git commit -m "Release 1.3.0"
 git push origin HEAD
 make release
 ```
@@ -74,7 +74,7 @@ make release
 | `make verify` | 上述检查和测试全部执行 |
 | `make package` | 当前机器架构的 DMG、ZIP 和各自 `.sha256`，位于 `dist/releases/` |
 | `make installer` | 生成 DMG 和 ZIP；挂载检查应用签名、版本、架构及 Applications 快捷方式 |
-| `make screenshots` | 生成 `docs/images/product-*.png` 的四张真实截图 |
+| `make screenshots` | 生成 `docs/images/product-*.png` 的六张真实截图 |
 
 截图和窗口测试需要当前登录用户的 macOS 图形会话，使用独立应用标识，不改动正式应用偏好。原始截图和日志在 `.build/screenshots-*/`；窗口测试结果在 `.build/smoke-*/`。
 

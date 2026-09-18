@@ -77,7 +77,7 @@ Selecting text with the mouse pauses automatic centring. Chinese input compositi
 
 ![Paragraph focus and typewriter scrolling in the native editor](../images/product-writing.png)
 
-The tools in these three sections are available in the source build on `main`; see [Unreleased](../../CHANGELOG.md) for changes awaiting a tagged release.
+The tools in these three sections were added in [version 1.2.0](../../CHANGELOG.md).
 
 ## Language and appearance
 

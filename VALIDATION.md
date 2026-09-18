@@ -31,8 +31,8 @@ The latest local native report and captures are in `.build/smoke-20260918-160310
 - Chinese ZIP paths created by `ditto` are handled even when the ZIP does not set the UTF-8 filename flag, allowing the Linux publishing job to inspect them.
 - `make screenshots` generated six real product window captures in `docs/images/`, including the command palette and paragraph focus / typewriter view; each was visually inspected.
 
-The local artifacts are `dist/墨笺.app` and `dist/releases/Marknote-1.1.0-macos-arm64.{dmg,zip}`, with adjacent `.sha256` files. Native Intel execution and both release architectures are checked by the separate macOS GitHub runners.
+The local artifacts are `dist/墨笺.app` and `dist/releases/Marknote-1.2.0-macos-arm64.{dmg,zip}`, with adjacent `.sha256` files. Native Intel execution and both release architectures are checked by the separate macOS GitHub runners.
 
-These local development packages include the Unreleased changes. The published `v1.1.0` assets are immutable and do not include these additions.
+The core and native results above were collected before the 1.2.0 version bump. The release workflow repeats these checks for the tagged commit on both architectures before publishing its packages.
 
 The declared minimum is macOS 13; local runtime validation used macOS 15.7.9. Developer ID signing and Apple notarization require maintainer credentials and were not exercised. Default builds use ad-hoc signatures. See the [release guide](docs/en/releasing.md) and [user guide](docs/en/README.md).

@@ -29,10 +29,10 @@ Once the code and changelog are committed and the current commit is pushed:
 make release
 ```
 
-The command reads the version from `Resources/Info.plist` (currently `1.1.0`) and:
+The command reads the version from `Resources/Info.plist` (currently `1.2.0`) and:
 
 1. Checks a clean worktree, GitHub remote, pushed commit, active Release workflow, changelog entry, and version tags.
-2. Creates and pushes an annotated `v1.1.0` tag, triggering the Release workflow.
+2. Creates and pushes an annotated `v1.2.0` tag, triggering the Release workflow.
 3. Runs repository checks, core tests, and native window tests on `macos-15` (arm64) and `macos-15-intel` (x86_64), then builds, verifies signatures, and packages each architecture.
 4. Verifies all download checksums, ZIP-embedded app versions, actual Mach-O CPU types, and DMG trailers; generates bilingual notes from the changelog.
 5. Creates a draft, uploads all four DMG / ZIP files and `SHA256SUMS.txt`, and publishes only after all uploads succeed. The local command waits for CI and prints the Release URL.
@@ -43,7 +43,7 @@ Run a read-only preflight, or explicitly require a version match:
 
 ```sh
 make release-check
-make release VERSION=1.1.0
+make release VERSION=1.2.0
 ```
 
 For publishing and packaging, `VERSION` is an assertion, not a silent source-file override. Stable `X.Y.Z` versions are supported.
@@ -51,11 +51,11 @@ For publishing and packaging, `VERSION` is an assertion, not a silent source-fil
 ## Prepare the next version
 
 ```sh
-make version VERSION=1.2.0
-# Add a nonempty ## [1.2.0] entry to CHANGELOG.md
+make version VERSION=1.3.0
+# Add a nonempty ## [1.3.0] entry to CHANGELOG.md
 make verify
 git add Resources/Info.plist CHANGELOG.md
-git commit -m "Release 1.2.0"
+git commit -m "Release 1.3.0"
 git push origin HEAD
 make release
 ```
@@ -74,7 +74,7 @@ make release
 | `make verify` | Run all the checks and tests above |
 | `make package` | Versioned DMG + ZIP with `.sha256` files in `dist/releases/` for this Mac |
 | `make installer` | Build the DMG (also produces the companion ZIP); mount and verify the app, version, architecture, and Applications shortcut |
-| `make screenshots` | Four real window captures at `docs/images/product-*.png` |
+| `make screenshots` | Six real window captures at `docs/images/product-*.png` |
 
 Screenshots and window tests require a logged-in macOS graphical session. Separate bundle identifiers isolate preferences from the regular app. Screenshot originals and logs live in `.build/screenshots-*/`; native test results live in `.build/smoke-*/`.
 

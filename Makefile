@@ -18,10 +18,10 @@ help:
 	  'make package               Create versioned ZIP + DMG with SHA-256 checksums' \
 	  'make installer             Build and verify the drag-to-install DMG' \
 	  'make screenshots           Refresh real product screenshots in docs/images' \
-	  'make version VERSION=1.2.0 Update version and increment build number' \
+	  'make version VERSION=1.3.0 Update version and increment build number' \
 	  'make release-check         Read-only release preflight (requires GitHub)' \
 	  'make release               Push version tag; wait for CI to publish assets' '' \
-	  'Options: CONFIGURATION=debug, REMOTE=origin, VERSION=1.1.0'
+	  'Options: CONFIGURATION=debug, REMOTE=origin, VERSION=1.2.0'
 
 build:
 	bash Scripts/build.sh "$$CONFIGURATION"
