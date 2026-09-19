@@ -6,7 +6,15 @@
 
 ## Install
 
-Requires macOS 13 or later. On the [Releases page](https://github.com/laixintao/marknote/releases), choose the package matching the processor shown in About This Mac:
+Requires macOS 13 or later. Install with [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask laixintao/tap/marknote
+```
+
+The [personal tap](https://github.com/laixintao/homebrew-tap) provides Apple Silicon and Intel builds; Homebrew selects the correct one automatically. To update, run `brew update` followed by `brew upgrade --cask laixintao/tap/marknote`. To uninstall, run `brew uninstall --cask laixintao/tap/marknote`.
+
+For a manual installation, on the [Releases page](https://github.com/laixintao/marknote/releases), choose the package matching the processor shown in About This Mac:
 
 | Mac | File |
 | --- | --- |

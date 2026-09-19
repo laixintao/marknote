@@ -34,7 +34,15 @@ The writing tools are included in [version 1.2.0](CHANGELOG.md). The [five-produ
 
 ## Install and run
 
-Requires **macOS 13+**. On the [**Releases** page](https://github.com/laixintao/marknote/releases), download the `.dmg` installer: choose `macos-arm64` for Apple Silicon or `macos-x86_64` for Intel. Open it, drag `墨笺.app` to Applications, eject the disk image, and launch the installed app. ZIP archives are also available. Default CI builds are ad-hoc signed and are not Apple-notarized; see the [installation guide](docs/en/README.md) for first-launch details and building locally.
+Requires **macOS 13+**. Install through [Homebrew](https://brew.sh) using the [personal tap](https://github.com/laixintao/homebrew-tap):
+
+```sh
+brew install --cask laixintao/tap/marknote
+```
+
+Homebrew selects the Apple Silicon or Intel build for your Mac. To update, run `brew update` followed by `brew upgrade --cask laixintao/tap/marknote`.
+
+For a manual installation, on the [**Releases** page](https://github.com/laixintao/marknote/releases), download the `.dmg` installer: choose `macos-arm64` for Apple Silicon or `macos-x86_64` for Intel. Open it, drag `墨笺.app` to Applications, eject the disk image, and launch the installed app. ZIP archives are also available. Default CI builds are ad-hoc signed and are not Apple-notarized; see the [installation guide](docs/en/README.md) for first-launch details and building locally.
 
 To build from source, install Swift 6.1+ through Xcode or Xcode Command Line Tools, plus Python 3.9+, then run:
 
