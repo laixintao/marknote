@@ -3,7 +3,7 @@ import WebKit
 import UniformTypeIdentifiers
 import MarknoteCore
 
-final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTextStorageDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate, WKNavigationDelegate, NSMenuItemValidation {
+final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTextStorageDelegate, NSTableViewDataSource, NSTableViewDelegate, NSSplitViewDelegate, NSToolbarDelegate, WKNavigationDelegate, NSMenuItemValidation {
     let editor = MarkdownTextView()
     let preview: WKWebView
     let renderer = MarkdownRenderer()
@@ -27,6 +27,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     private var mode = 1
     private var previousMode = 1
     private var previousSidebar = true
+    private var sidebarWidth: CGFloat = 205
     private var focused = false
     private var previewScroll: Double = 0
     private var previewRevision = 0
@@ -85,15 +86,22 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         guard let container = window?.contentView else { return }
         rootSplit.isVertical = true
         rootSplit.dividerStyle = .thin
+        rootSplit.delegate = self
         contentSplit.isVertical = true
         contentSplit.dividerStyle = .thin
         rootSplit.addArrangedSubview(sidebar)
         rootSplit.addArrangedSubview(contentSplit)
         contentSplit.addArrangedSubview(sourcePane)
         contentSplit.addArrangedSubview(previewPane)
-        rootSplit.setHoldingPriority(.defaultHigh, forSubviewAt: 0)
+        // Preserve the sidebar when resizing the window, but stay below AppKit's
+        // divider-drag priority (490) so the user can still change its width.
+        rootSplit.setHoldingPriority(.init(260), forSubviewAt: 0)
         sidebar.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 170), sidebar.widthAnchor.constraint(lessThanOrEqualToConstant: 290)])
+        NSLayoutConstraint.activate([
+            sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 170),
+            sidebar.widthAnchor.constraint(lessThanOrEqualToConstant: 480),
+            contentSplit.widthAnchor.constraint(greaterThanOrEqualToConstant: 420)
+        ])
         container.addSubview(rootSplit)
         let footer = NSView()
         container.addSubview(footer)
@@ -118,7 +126,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         buildEditor()
         buildPreview()
         container.layoutSubtreeIfNeeded()
-        rootSplit.setPosition(205, ofDividerAt: 0)
+        rootSplit.setPosition(sidebarWidth, ofDividerAt: 0)
         contentSplit.setPosition(max(280, contentSplit.bounds.width / 2), ofDividerAt: 0)
     }
 
@@ -241,7 +249,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        ["sidebar", .flexibleSpace, "bold", "italic", "link", "insert", .flexibleSpace, "mode", "focus", "export"]
+        ["sidebar", .flexibleSpace, "bold", "italic", "link", "insert", .flexibleSpace, "mode", "export"]
     }
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { toolbarDefaultItemIdentifiers(toolbar) }
 
@@ -255,9 +263,9 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
             modeControl.action = #selector(changeMode(_:))
             modeControl.setAccessibilityLabel(L10n.text(.modesAccessibility))
             let modes: [(L10n.Key, L10n.Key, String, Selector)] = [
-                (.editorToggle, .editorOnly, "square.and.pencil", #selector(showEditor)),
+                (.editorOnly, .editorOnly, "square.and.pencil", #selector(showEditor)),
                 (.splitMode, .splitView, "rectangle.split.2x1", #selector(showSplit)),
-                (.previewToggle, .previewOnly, "eye", #selector(showPreview))
+                (.previewOnly, .previewOnly, "eye", #selector(showPreview))
             ]
             let menuItem = NSMenuItem(title: L10n.text(.modesAccessibility), action: nil, keyEquivalent: "")
             menuItem.submenu = NSMenu()
@@ -298,8 +306,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
             "sidebar": ("sidebar.left", L10n.text(.sidebarHelp), #selector(toggleSidebar)),
             "bold": ("bold", L10n.text(.boldHelp), #selector(toggleBold)),
             "italic": ("italic", L10n.text(.italicHelp), #selector(toggleItalic)),
-            "link": ("link", L10n.text(.linkHelp), #selector(insertLink)),
-            "focus": ("viewfinder", L10n.text(.focusHelp), #selector(toggleFocus))
+            "link": ("link", L10n.text(.linkHelp), #selector(insertLink))
         ]
         guard let (symbol, title, action) = values[identifier.rawValue] else { return nil }
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
@@ -436,10 +443,22 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         }
     }
 
-    @objc func toggleSidebar() {
-        sidebar.isHidden.toggle()
+    func splitView(_ splitView: NSSplitView, effectiveRect proposedEffectiveRect: NSRect, forDrawnRect drawnRect: NSRect, ofDividerAt dividerIndex: Int) -> NSRect {
+        // Keep the separator visually thin while making its entire edge easy to grab.
+        guard splitView === rootSplit, !sidebar.isHidden else { return proposedEffectiveRect }
+        return proposedEffectiveRect.union(drawnRect.insetBy(dx: -6, dy: 0))
+    }
+
+    private func setSidebarVisible(_ visible: Bool) {
+        guard visible == sidebar.isHidden else { return }
+        if !visible { sidebarWidth = sidebar.frame.width }
+        sidebar.isHidden = !visible
         rootSplit.adjustSubviews()
-        if !sidebar.isHidden { rootSplit.setPosition(205, ofDividerAt: 0) }
+        if visible { rootSplit.setPosition(sidebarWidth, ofDividerAt: 0) }
+    }
+
+    @objc func toggleSidebar() {
+        setSidebarVisible(sidebar.isHidden)
     }
     @objc func toggleEditorPane() {
         setMode(isEditorVisible ? 2 : 1)
@@ -455,9 +474,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         guard (0...2).contains(value) else { return }
         if focused && value != 0 {
             focused = false
-            sidebar.isHidden = !previousSidebar
-            rootSplit.adjustSubviews()
-            if !sidebar.isHidden { rootSplit.setPosition(205, ofDividerAt: 0) }
+            setSidebarVisible(previousSidebar)
         }
         mode = value
         sourcePane.isHidden = value == 2
@@ -471,17 +488,15 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     @objc func toggleFocus() {
         if focused {
             focused = false
-            sidebar.isHidden = !previousSidebar
+            setSidebarVisible(previousSidebar)
             setMode(previousMode)
         } else {
             previousMode = mode
             previousSidebar = !sidebar.isHidden
-            sidebar.isHidden = true
+            setSidebarVisible(false)
             setMode(0)
             focused = true
         }
-        rootSplit.adjustSubviews()
-        if !sidebar.isHidden { rootSplit.setPosition(205, ofDividerAt: 0) }
     }
     func apply(_ edit: TextEdit, name: String) {
         if mode == 2 { setMode(1) }

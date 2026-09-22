@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-22
+
+- Fix outline resizing, widen the draggable edge, and retain its width when toggling the outline or focus mode. / 修复大纲宽度拖动，扩大边界拖动区域，并在切换大纲和专注模式时保留宽度。
+- Clarify the toolbar's three display modes as Editor Only / Split / Preview Only; keep Focus Mode in the View menu and its shortcut. / 工具栏明确为仅编辑、分栏、仅预览三种显示模式；专注模式保留在显示菜单和快捷键中。
+
 ## [1.2.0] - 2026-09-18
 
 ### Added / 新增

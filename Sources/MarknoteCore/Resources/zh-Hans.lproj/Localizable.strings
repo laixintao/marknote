@@ -49,7 +49,7 @@
 "outline" = "文档大纲";
 "editorOnly" = "仅编辑";
 "splitView" = "双栏预览";
-"previewOnly" = "仅阅读";
+"previewOnly" = "仅预览";
 "focus" = "专注模式";
 "increaseFont" = "增大编辑字号";
 "decreaseFont" = "减小编辑字号";

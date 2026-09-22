@@ -2,6 +2,8 @@
 
 Validated on 2026-09-18 with Apple Silicon, macOS 15.7.9, Swift 6.1.2, and Xcode Command Line Tools. Cloud results are recorded separately in [GitHub Actions](https://github.com/laixintao/marknote/actions).
 
+Release 1.2.1 validation on 2026-09-22: `make verify` passed **107 native checks**, **18 core tests / 515 assertions**, **22 release-tool tests**, and repository checks. New checks dispatch mouse-down, drag, and mouse-up events to the real outline divider, verify width restoration after sidebar and focus toggles, and check the narrow-window layout. The three explicit display modes and bilingual labels pass the existing layout, selection, and undo checks. Report: `.build/smoke-20260922-120355-t2YiST/report.txt`. Product screenshots were refreshed for the updated toolbar.
+
 ## Core behavior
 
 `make test`: **18 tests, 515 assertions, no failures**.

@@ -16,7 +16,7 @@ Built with Swift, AppKit, and WebKit. Your files stay on your Mac. No account, E
 - **Keyboard-first navigation** with a searchable command palette and quick open for open, recent, and nearby Markdown files.
 - **Fewer editing steps** with image paste / drop, relative image assets, URL paste over selected text, and table formatting with Tab navigation.
 - **Comfortable long-form writing** with optional paragraph focus and typewriter scrolling.
-- **Your choice of layout** with an Edit / Split / Preview button group and focus mode.
+- **Your choice of layout** with an Editor Only / Split / Preview Only button group, a resizable outline, and focus mode.
 - **A clear document structure** with a clickable outline, word and character counts, and cursor position.
 - **Everyday Markdown** including code blocks, quotes, images, tables, task lists, and strikethrough.
 - **Files you own** with UTF-8 documents, multiple windows, autosave, HTML export, and PDF export.
@@ -61,7 +61,7 @@ The app is built at `dist/墨笺.app`. The Markdown parser and translations are 
 | Search commands / Quick open | `⇧⌘P` / `⇧⌘O` |
 | Insert image / Format table | `⇧⌘I` / `⌥⌘T` |
 | Paragraph focus / Typewriter scrolling | View menu |
-| Choose Edit / Split / Preview | Toolbar button group, or `⌃⌘1` / `⌃⌘2` / `⌃⌘3` |
+| Choose Editor Only / Split / Preview Only | Toolbar button group, or `⌃⌘1` / `⌃⌘2` / `⌃⌘3` |
 | Focus mode | `⌘⇧F` |
 | Save / Find | `⌘S` / `⌘F` |
 | Bold / Italic / Link | `⌘B` / `⌘I` / `⌘K` |

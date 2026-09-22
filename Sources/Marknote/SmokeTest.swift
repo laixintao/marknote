@@ -58,18 +58,20 @@ import MarknoteCore
             controller.window?.makeMain()
             controller.window?.makeKey()
             controller.window?.makeFirstResponder(editor)
+            try verifySidebarResizing(controller: controller) { try check($0, $1) }
             try check(editor.string == document.text, "原生编辑器载入中文与 emoji")
             let range = (editor.string as NSString).range(of: "中文与 emoji 🌱")
             editor.setSelectedRange(range)
             try check(editor.tryToPerform(#selector(EditorWindowController.toggleBold), with: nil), "当前窗口响应链调用格式命令")
             try check(document.text.contains("**中文与 emoji 🌱**"), "加粗操作同步至文档模型")
-            editor.breakUndoCoalescing()
-            try await Task.sleep(nanoseconds: 250_000_000)
+            try await settleEditing(editor, document: document)
             try check(editor.undoManager?.canUndo == true, "编辑操作可撤销")
             editor.undoManager?.undo()
+            try await settleEditing(editor, document: document)
             try check(!document.text.contains("**"), "撤销恢复原始文本")
             try check(!document.isDocumentEdited, "撤销回初始内容后恢复未修改状态")
             editor.undoManager?.redo()
+            try await settleEditing(editor, document: document)
             try check(document.text.contains("**中文与 emoji 🌱**"), "重做恢复格式")
             let task = (editor.string as NSString).range(of: "- [ ] 任务")
             editor.setSelectedRange(NSRange(location: NSMaxRange(task), length: 0))
@@ -206,6 +208,7 @@ import MarknoteCore
         controller.showSplit()
         let group = try modeGroup(in: controller)
         try check(group.segmentCount == 3 && group.trackingMode == .selectOne && group.selectedSegment == 1, "模式按钮组默认单选分栏模式")
+        try check(controller.window?.toolbar?.items.contains(where: { $0.itemIdentifier.rawValue == "focus" }) == false, "工具栏显示三个明确的布局选项，专注功能保留在菜单")
         try selectMode(0, in: group)
         try check(controller.isEditorVisible && !controller.isPreviewVisible && group.selectedSegment == 0, "选择编辑模式只显示编辑器")
         try selectMode(2, in: group)
@@ -239,7 +242,7 @@ import MarknoteCore
         try check(blankController.isEditorVisible && blankController.isPreviewVisible, "各窗口独立保存编辑和预览的显示状态")
         try chooseLanguage(.english)
         try check(NSApp.mainMenu?.items.contains(where: { $0.title == "File" }) == true && controller.window?.subtitle == "A little space to think", "语言菜单切换后主菜单与当前窗口立即变为英文")
-        try check(try modeGroup(in: blankController).label(forSegment: 0) == "Edit" && group.label(forSegment: 1) == "Split" && group.label(forSegment: 2) == "Preview", "所有已打开窗口的模式按钮组同时切换语言")
+        try check(try modeGroup(in: blankController).label(forSegment: 0) == "Editor Only" && group.label(forSegment: 1) == "Split" && group.label(forSegment: 2) == "Preview Only", "所有已打开窗口的模式按钮组同时切换语言")
         try check(blank.displayName.hasPrefix("Untitled") && labels(blankController.window!.contentView!).contains("Outline"), "未命名文稿标题和侧栏跟随界面语言")
         try check(labels(controller.window!.contentView!).contains(where: { $0.hasPrefix("Words: ") }) && labels(controller.window!.contentView!).contains(where: { $0.hasPrefix("Line ") }), "字数统计和光标位置使用英文格式")
         try check(!controller.isEditorVisible && controller.isPreviewVisible && group.selectedSegment == 2, "语言切换保留窗口布局和模式选择")
@@ -260,11 +263,58 @@ import MarknoteCore
         try await waitForPreview(controller)
         try await screenshot(controller, to: directory.appendingPathComponent("window-english.png"))
         try chooseLanguage(.simplifiedChinese)
-        try check(NSApp.mainMenu?.items.contains(where: { $0.title == "文件" }) == true && group.label(forSegment: 0) == "编辑" && group.label(forSegment: 1) == "分栏" && blank.displayName.hasPrefix("未命名"), "切回中文后所有窗口和菜单恢复中文")
+        try check(NSApp.mainMenu?.items.contains(where: { $0.title == "文件" }) == true && group.label(forSegment: 0) == "仅编辑" && group.label(forSegment: 1) == "分栏" && group.label(forSegment: 2) == "仅预览" && blank.displayName.hasPrefix("未命名"), "切回中文后所有窗口和菜单恢复中文")
         try chooseLanguage(.system)
         try check(L10n.shared.selection == .system, "语言菜单支持恢复跟随系统")
         try chooseLanguage(.simplifiedChinese)
         try check(document.text == originalText, "多次语言切换始终保留原文内容")
+    }
+
+    private static func verifySidebarResizing(controller: EditorWindowController, check: (Bool, String) throws -> Void) throws {
+        guard let window = controller.window,
+              let split = window.contentView?.subviews.first(where: { $0 is NSSplitView }) as? NSSplitView,
+              let sidebar = split.arrangedSubviews.first else { throw Failure(message: "Missing outline split view") }
+        window.makeKeyAndOrderFront(nil)
+        let originalFrame = window.frame
+        window.setContentSize(NSSize(width: 1220, height: 800))
+        window.contentView?.layoutSubtreeIfNeeded()
+        let originalWidth = sidebar.frame.width
+        defer {
+            window.setFrame(originalFrame, display: true)
+            split.setPosition(originalWidth, ofDividerAt: 0)
+        }
+        func drag(to width: CGFloat, offset: CGFloat) throws {
+            let start = split.convert(NSPoint(x: sidebar.frame.maxX + offset, y: split.bounds.midY), to: nil)
+            let end = NSPoint(x: start.x + width - sidebar.frame.width, y: start.y)
+            func event(_ type: NSEvent.EventType, at point: NSPoint) -> NSEvent {
+                NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                  windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+            }
+            NSApp.postEvent(event(.leftMouseUp, at: end), atStart: true)
+            NSApp.postEvent(event(.leftMouseDragged, at: end), atStart: true)
+            window.sendEvent(event(.leftMouseDown, at: start))
+            window.contentView?.layoutSubtreeIfNeeded()
+            try check(abs(sidebar.frame.width - width) <= 1, "拖动大纲边界至 \(Int(width)) pt（实际 \(sidebar.frame.width)）")
+        }
+        try drag(to: 360, offset: -4)
+        controller.toggleSidebar()
+        controller.toggleSidebar()
+        window.contentView?.layoutSubtreeIfNeeded()
+        try check(abs(sidebar.frame.width - 360) <= 1, "隐藏再显示大纲保留拖动后的宽度")
+        controller.toggleFocus()
+        controller.toggleFocus()
+        window.contentView?.layoutSubtreeIfNeeded()
+        try check(abs(sidebar.frame.width - 360) <= 1, "退出专注模式恢复大纲宽度")
+        controller.toggleFocus()
+        controller.showPreview()
+        window.contentView?.layoutSubtreeIfNeeded()
+        try check(abs(sidebar.frame.width - 360) <= 1, "从专注切换到预览恢复大纲宽度")
+        try drag(to: 240, offset: 4)
+        controller.showSplit()
+        window.setContentSize(NSSize(width: 780, height: 600))
+        window.contentView?.superview?.layoutSubtreeIfNeeded()
+        try check(abs(sidebar.frame.width - 240) <= 1 && split.arrangedSubviews[1].frame.width >= 420, "缩小窗口保留大纲宽度并为正文保留可用空间")
+        try check(window.toolbar?.visibleItems?.contains(where: { $0.itemIdentifier.rawValue == "mode" }) == true, "窄窗口仍显示三种模式按钮")
     }
 
     private static func verifyOutlineNavigation(check: (Bool, String) throws -> Void) async throws {

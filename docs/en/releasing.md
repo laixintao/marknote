@@ -29,10 +29,10 @@ Once the code and changelog are committed and the current commit is pushed:
 make release
 ```
 
-The command reads the version from `Resources/Info.plist` (currently `1.2.0`) and:
+The command reads the version from `Resources/Info.plist` (currently `1.2.1`) and:
 
 1. Checks a clean worktree, GitHub remote, pushed commit, active Release workflow, changelog entry, and version tags.
-2. Creates and pushes an annotated `v1.2.0` tag, triggering the Release workflow.
+2. Creates and pushes an annotated `v1.2.1` tag, triggering the Release workflow.
 3. Runs repository checks, core tests, and native window tests on `macos-15` (arm64) and `macos-15-intel` (x86_64), then builds, verifies signatures, and packages each architecture.
 4. Verifies all download checksums, ZIP-embedded app versions, actual Mach-O CPU types, and DMG trailers; generates bilingual notes from the changelog.
 5. Creates a draft, uploads all four DMG / ZIP files and `SHA256SUMS.txt`, and publishes only after all uploads succeed. The local command waits for CI and prints the Release URL.
@@ -43,7 +43,7 @@ Run a read-only preflight, or explicitly require a version match:
 
 ```sh
 make release-check
-make release VERSION=1.2.0
+make release VERSION=1.2.1
 ```
 
 For publishing and packaging, `VERSION` is an assertion, not a silent source-file override. Stable `X.Y.Z` versions are supported.
