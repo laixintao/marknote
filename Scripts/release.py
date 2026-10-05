@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""Tag a clean commit, or publish verified CI assets without exposing partial releases."""
+"""Prepare and push the next release, or publish verified CI assets."""
 import argparse
+from datetime import date
 import hashlib
+import html
 import json
 import os
 from pathlib import Path
 import plistlib
 import re
+import shlex
 import shutil
 import struct
 import subprocess
 import sys
 import tempfile
-import time
 import zipfile
 
 import version
@@ -45,66 +47,84 @@ def release_state(repo, tag):
 
 
 def preflight():
-    for tool in ("git", "gh"):
-        if not shutil.which(tool):
-            raise RuntimeError(f"Install {tool} before releasing (see docs/en/releasing.md).")
-    current = version.current()
-    requested = os.environ.get("VERSION") or current
-    version.check_tag(f"v{requested}")
-    tag = f"v{current}"
+    if not shutil.which("git"):
+        raise RuntimeError("Install Git before releasing (see docs/en/releasing.md).")
     revision = command("git", "rev-parse", "--verify", "HEAD", allowed=(0, 128))
     if not revision:
         raise RuntimeError("Create an initial commit and push the project to GitHub before releasing.")
     if command("git", "status", "--porcelain"):
         raise RuntimeError("Commit all changes before releasing. The working tree must be clean.")
+    if command("git", "branch", "--show-current") != "main":
+        raise RuntimeError("Release from the main branch.")
+    current = version.current()
+    major, minor, patch = map(int, current.split("."))
+    requested = version.validate(os.environ.get("VERSION") or f"{major}.{minor}.{patch + 1}")
+    if tuple(map(int, requested.split("."))) <= (major, minor, patch):
+        raise ValueError(f"The next version must be newer than {current}.")
+    tag = f"v{requested}"
     remote = os.environ.get("REMOTE") or "origin"
     if remote.startswith("-"):
         raise ValueError("Invalid Git remote name.")
-    repo = repository(command("git", "remote", "get-url", remote))
-    if repository(command("git", "remote", "get-url", "--push", remote)) != repo:
-        raise RuntimeError("Fetch and push URLs must refer to the same GitHub repository.")
-    command("gh", "auth", "status", "--hostname", "github.com")
-    if command("gh", "api", f"repos/{repo}/commits/{revision}", "--jq", ".sha") != revision:
-        raise RuntimeError("Push this commit to the GitHub repository before releasing.")
-    # The workflow must be registered on GitHub before a tag is pushed.
-    workflow = json.loads(command("gh", "api", f"repos/{repo}/actions/workflows/release.yml"))
-    if workflow.get("state") != "active":
-        raise RuntimeError("Enable Release Actions on the default branch before releasing.")
-    existing = release_state(repo, tag)
-    if existing and not existing["isDraft"]:
-        raise RuntimeError(f"{tag} is already published. Choose a new version; releases are never overwritten.")
-    local_revision = command("git", "rev-parse", "--verify", f"refs/tags/{tag}^{{commit}}", allowed=(0, 128))
-    if local_revision and local_revision != revision:
-        raise RuntimeError(f"Local tag {tag} points to another commit; it will not be moved.")
-    refs = command("git", "ls-remote", "--tags", remote, f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}")
-    lines = [line.split() for line in refs.splitlines()]
-    target = next((sha for sha, name in lines if name.endswith("^{}")), lines[0][0] if lines else "")
-    if target and target != revision:
-        raise RuntimeError(f"Remote tag {tag} points to another commit; it will not be moved.")
-    release_notes(tag)  # Fail before pushing when the changelog entry is missing.
-    print(f"Ready: {repo} · {tag} · {revision[:12]}", flush=True)
-    return repo, remote, tag, revision, bool(local_revision), bool(target)
+    remote_url = command("git", "remote", "get-url", remote)
+    if command("git", "remote", "get-url", "--push", remote) != remote_url:
+        raise RuntimeError("Fetch and push URLs must be identical for releases.")
+    if command("git", "tag", "--list", tag):
+        raise RuntimeError(f"{tag} already exists locally. Retry its push instead of bumping again.")
+    # Check the remote before editing any version or changelog files.
+    if command("git", "ls-remote", remote, f"refs/tags/{tag}"):
+        raise RuntimeError(f"{tag} already exists on {remote}. Choose a new version.")
+    command("git", "fetch", "--quiet", remote, "refs/heads/main", "--tags")
+    remote_head = command("git", "rev-parse", "FETCH_HEAD")
+    base = command("git", "merge-base", remote_head, "HEAD", allowed=(0, 1))
+    if base != remote_head:
+        raise RuntimeError("Remote main has changes you do not have. Pull/rebase before releasing.")
+    previous = f"v{current}"
+    has_base = command("git", "tag", "--list", previous)
+    commits = command("git", "log", "--no-merges", "--format=%h%x09%s",
+                      f"{previous}..HEAD" if has_base else "HEAD")
+    if not commits:
+        raise RuntimeError("There are no new commits since the current release.")
+    changes = []
+    for line in commits.splitlines():
+        sha, subject = line.split("\t", 1)
+        subject = re.sub(r"([\\`*_\[\]])", r"\\\1", html.escape(subject))
+        changes.append(f"- {subject} (`{sha}`)")
+    changelog = (ROOT / "CHANGELOG.md").read_text()
+    entry = re.search(rf"^## \[{re.escape(requested)}\][^\n]*\n(.*?)(?=^## |\Z)", changelog, re.M | re.S)
+    if entry and not entry[1].strip():
+        raise ValueError(f"The prepared CHANGELOG.md entry for {requested} must be nonempty.")
+    if not entry:
+        heading, separator, remainder = changelog.partition("\n")
+        changelog = (heading + separator + f"\n## [{requested}] - {date.today().isoformat()}\n\n"
+                     "### Changes / 变更\n\n" + "\n".join(changes) + "\n" + remainder)
+    command("git", "var", "GIT_AUTHOR_IDENT")
+    command("git", "var", "GIT_COMMITTER_IDENT")
+    print(f"Ready: {current} → {requested} · {remote}/main", flush=True)
+    return requested, tag, remote, remote_url, changelog
 
 
 def start():
-    repo, remote, tag, revision, local_exists, remote_exists = preflight()
-    if not remote_exists:
-        if not local_exists:
-            command("git", "tag", "-a", tag, "-m", f"Marknote {tag}", revision)
-        command("git", "push", remote, f"refs/tags/{tag}:refs/tags/{tag}", capture=False)
-    print(f"Waiting for https://github.com/{repo}/actions/workflows/release.yml", flush=True)
-    for _ in range(30):
-        runs = json.loads(command("gh", "run", "list", "--repo", repo, "--workflow", "release.yml",
-                                 "--branch", tag, "--commit", revision, "--event", "push", "--json", "databaseId"))
-        if runs:
-            run_id = str(runs[0]["databaseId"])
-            print(f"Release run: https://github.com/{repo}/actions/runs/{run_id}", flush=True)
-            command("gh", "run", "watch", run_id, "--repo", repo, "--exit-status", capture=False)
-            print(command("gh", "release", "view", tag, "--repo", repo, "--json", "url", "--jq", ".url"))
-            return
-        time.sleep(3)
-    raise RuntimeError(f"No Release run found for {tag}. Check Actions permissions. The tag is preserved; "
-                       f"start Release manually with tag={tag} after resolving the issue.")
+    requested, tag, remote, remote_url, changelog = preflight()
+    version.set_version(requested)
+    (ROOT / "CHANGELOG.md").write_text(changelog)
+    release_notes(tag)
+    command("git", "add", "--", "Resources/Info.plist", "CHANGELOG.md")
+    command("git", "commit", "-m", f"Release {tag}")
+    command("git", "tag", "-a", tag, "-m", f"Marknote {requested}")
+    push = ("git", "push", "--atomic", remote, "HEAD:refs/heads/main", f"refs/tags/{tag}")
+    try:
+        command(*push, capture=False)
+    except RuntimeError as error:
+        raise RuntimeError(f"Commit and tag are kept locally. After fixing the push error, retry:\n"
+                           f"  {shlex.join(push)}\n"
+                           "Do not run make release again to retry this version.") from error
+    print(f"Pushed {tag}. GitHub Actions will build, test, package, attest, and publish.")
+    try:
+        repo = repository(remote_url)
+    except ValueError:
+        return  # Local Git remotes are useful for exercising the release transaction.
+    print(f"Follow progress: https://github.com/{repo}/actions/workflows/release.yml\n"
+          f"Release (available after CI): https://github.com/{repo}/releases/tag/{tag}")
 
 
 def verify_archive(archive, release_version, arch):

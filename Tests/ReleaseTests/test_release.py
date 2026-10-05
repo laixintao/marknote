@@ -4,7 +4,9 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -186,26 +188,6 @@ class ReleaseTests(unittest.TestCase):
                 release.publish(self.tag, self.directory)
             command.assert_not_called()
 
-    def test_one_command_tags_explicit_commit_then_waits(self):
-        args = ("owner/repo", "origin", self.tag, "a" * 40, False, False)
-        calls = []
-
-        def fake(*command, **kwargs):
-            calls.append(command)
-            return '[{"databaseId": 42}]' if command[:3] == ("gh", "run", "list") else ""
-
-        with patch.object(release, "preflight", return_value=args), patch.object(release, "command", side_effect=fake):
-            release.start()
-        self.assertEqual(calls[0], ("git", "tag", "-a", self.tag, "-m", f"Marknote {self.tag}", "a" * 40))
-        self.assertEqual(calls[1], ("git", "push", "origin", f"refs/tags/{self.tag}:refs/tags/{self.tag}"))
-        self.assertTrue(any(command[:3] == ("gh", "run", "watch") and "--exit-status" in command for command in calls))
-
-    def test_existing_remote_tag_is_not_pushed_again(self):
-        args = ("owner/repo", "origin", self.tag, "a" * 40, True, True)
-        with patch.object(release, "preflight", return_value=args), patch.object(release, "command", side_effect=['[{"databaseId": 42}]', "", ""]) as command:
-            release.start()
-        self.assertFalse(any(call.args[0] == "git" for call in command.call_args_list))
-
     def test_dirty_worktree_fails_before_network_or_tagging(self):
         with patch.dict(os.environ, {"VERSION": self.version}), patch.object(release.shutil, "which", return_value="tool"), patch.object(release, "command", side_effect=["a" * 40, "?? file.md"]) as command:
             with self.assertRaisesRegex(RuntimeError, "working tree must be clean"):
@@ -218,31 +200,138 @@ class ReleaseTests(unittest.TestCase):
                 release.preflight()
         self.assertEqual(command.call_count, 1)
 
-    def test_remote_tag_on_another_commit_is_not_moved(self):
-        revision = "a" * 40
-
-        def fake(*args, **kwargs):
-            if args[:3] == ("git", "rev-parse", "--verify"):
-                return revision if args[3] == "HEAD" else ""
-            if args[:3] == ("git", "remote", "get-url"):
-                return "git@github.com:owner/repo.git"
-            if args[:2] == ("gh", "api"):
-                return revision if "/commits/" in args[2] else '{"state":"active"}'
-            if args[:3] == ("gh", "release", "list"):
-                return "[]"
-            if args[:2] == ("git", "ls-remote"):
-                return f"{'b' * 40}\trefs/tags/{self.tag}\n{'c' * 40}\trefs/tags/{self.tag}^{{}}"
-            return ""
-
-        with patch.dict(os.environ, {"VERSION": self.version, "REMOTE": "origin"}), patch.object(release.shutil, "which", return_value="tool"), patch.object(release, "command", side_effect=fake) as command:
-            with self.assertRaisesRegex(RuntimeError, "Remote tag .* another commit"):
-                release.preflight()
-        self.assertFalse(any(call.args[:2] in (("git", "push"), ("git", "tag")) for call in command.call_args_list))
-
     def test_missing_changelog_entry_blocks_release(self):
         (self.directory / "CHANGELOG.md").write_text("# Changelog\n")
         with patch.object(release, "ROOT", self.directory), self.assertRaisesRegex(ValueError, "nonempty"):
             release.release_notes(self.tag)
+
+
+class MakeReleaseTests(unittest.TestCase):
+    """Exercise the public Make target against a disposable bare remote, never GitHub."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="marknote-make-release-")
+        self.addCleanup(temporary.cleanup)
+        self.folder = Path(temporary.name)
+        self.repo = self.folder / "work"
+        self.repo.mkdir()
+        (self.repo / "Resources").mkdir()
+        shutil.copytree(release.ROOT / "Scripts", self.repo / "Scripts",
+                        ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copy2(release.ROOT / "Makefile", self.repo / "Makefile")
+        shutil.copy2(release.ROOT / ".gitignore", self.repo / ".gitignore")
+        self.info = self.repo / "Resources/Info.plist"
+        self.info.write_bytes(plistlib.dumps({"CFBundleShortVersionString": "1.2.1",
+                                            "CFBundleVersion": "7"}))
+        (self.repo / "CHANGELOG.md").write_text("# Changelog\n\n## [1.2.1]\n\nPrevious release.\n")
+        self.env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+        for key in ("VERSION", "REMOTE", "MAKEFLAGS", "MAKEOVERRIDES", "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
+            self.env.pop(key, None)
+        self.git("init", "-b", "main")
+        self.git("config", "user.name", "Release Test")
+        self.git("config", "user.email", "release@example.invalid")
+        self.git("add", ".")
+        self.git("commit", "-m", "Initial release")
+        self.git("tag", "v1.2.1")
+        self.git("commit", "--allow-empty", "-m", "Fix document rendering")
+        self.remote = self.folder / "origin.git"
+        self.git("init", "--bare", "--initial-branch=main", str(self.remote))
+        self.git("remote", "add", "origin", str(self.remote))
+        self.git("push", "origin", "main", "v1.2.1")
+        self.before = self.git("rev-parse", "HEAD")
+
+    def git(self, *args):
+        return subprocess.check_output(["git", *args], cwd=self.repo, env=self.env,
+                                       text=True, stderr=subprocess.PIPE).strip()
+
+    def make(self, *args):
+        return subprocess.run(["make", *args], cwd=self.repo, env=self.env, text=True,
+                              capture_output=True, timeout=30)
+
+    def assert_unchanged(self):
+        self.assertEqual(self.before, self.git("rev-parse", "HEAD"))
+        self.assertEqual(self.before, self.git("ls-remote", "origin", "refs/heads/main").split()[0])
+
+    def test_plain_make_release_bumps_commits_and_atomically_pushes(self):
+        result = self.make("release")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        info = plistlib.loads(self.info.read_bytes())
+        self.assertEqual(info["CFBundleShortVersionString"], "1.2.2")
+        self.assertEqual(info["CFBundleVersion"], "8")
+        self.assertIn("Fix document rendering", (self.repo / "CHANGELOG.md").read_text())
+        head = self.git("rev-parse", "HEAD")
+        self.assertEqual(self.git("cat-file", "-t", "v1.2.2"), "tag")
+        self.assertEqual(head, self.git("ls-remote", "origin", "refs/heads/main").split()[0])
+        self.assertEqual(head, self.git("ls-remote", "origin", "refs/tags/v1.2.2^{}").split()[0])
+        self.assertEqual(self.git("status", "--porcelain"), "")
+        self.assertNotEqual(self.make("release").returncode, 0)  # No changes since v1.2.2.
+
+    def test_explicit_version_preserves_curated_changelog(self):
+        path = self.repo / "CHANGELOG.md"
+        text = path.read_text().replace("# Changelog", "# Changelog\n\n## [2.0.0]\n\nCurated notes.")
+        path.write_text(text)
+        self.git("add", "CHANGELOG.md")
+        self.git("commit", "-m", "Prepare notes")
+        result = self.make("release", "VERSION=2.0.0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(path.read_text(), text)
+        self.assertEqual(plistlib.loads(self.info.read_bytes())["CFBundleShortVersionString"], "2.0.0")
+
+    def test_invalid_or_old_versions_leave_worktree_unchanged(self):
+        for value in ("1.2.1", "0.1.0", "01.2.3", "v2.0.0", "1.2.3-rc.1"):
+            with self.subTest(value=value):
+                self.assertNotEqual(self.make("release", f"VERSION={value}").returncode, 0)
+                self.assert_unchanged()
+                self.assertEqual(self.git("status", "--porcelain"), "")
+
+    def test_dirty_worktree_and_wrong_branch_fail_before_edits(self):
+        path = self.repo / "unfinished.txt"
+        path.write_text("work in progress")
+        self.assertIn("working tree must be clean", self.make("release").stderr)
+        self.assert_unchanged()
+        path.unlink()
+        self.git("switch", "-c", "feature")
+        self.assertIn("main branch", self.make("release").stderr)
+        self.assert_unchanged()
+
+    def test_existing_remote_tag_is_not_replaced(self):
+        self.git("tag", "v1.2.2")
+        self.git("push", "origin", "v1.2.2")
+        self.git("tag", "-d", "v1.2.2")
+        self.assertIn("already exists on origin", self.make("release").stderr)
+        self.assert_unchanged()
+        self.assertEqual(self.git("status", "--porcelain"), "")
+
+    def test_remote_ahead_fails_before_edits(self):
+        other = self.folder / "other"
+        self.git("clone", str(self.remote), str(other))
+        self.git("-C", str(other), "-c", "user.name=Other", "-c", "user.email=other@example.invalid",
+                 "commit", "--allow-empty", "-m", "Remote work")
+        self.git("-C", str(other), "push")
+        self.assertIn("Remote main has changes", self.make("release").stderr)
+        self.assertEqual(self.before, self.git("rev-parse", "HEAD"))
+        self.assertEqual(self.git("status", "--porcelain"), "")
+
+    def test_preflight_does_not_edit_files_or_push(self):
+        result = self.make("release-check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assert_unchanged()
+        self.assertEqual(self.git("status", "--porcelain"), "")
+        self.assertEqual(self.git("tag", "--list", "v1.2.2"), "")
+
+    def test_rejected_atomic_push_keeps_commit_and_tag_for_retry(self):
+        hook = self.remote / "hooks/pre-receive"
+        hook.write_text("#!/bin/sh\nexit 1\n")
+        hook.chmod(0o755)
+        result = self.make("release")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("git push --atomic origin HEAD:refs/heads/main refs/tags/v1.2.2", result.stderr)
+        self.assertEqual(self.before, self.git("ls-remote", "origin", "refs/heads/main").split()[0])
+        self.assertEqual(self.git("ls-remote", "origin", "refs/tags/v1.2.2"), "")
+        self.assertEqual(self.git("rev-parse", "HEAD"), self.git("rev-parse", "v1.2.2^{}"))
+        hook.unlink()
+        self.git("push", "--atomic", "origin", "HEAD:refs/heads/main", "refs/tags/v1.2.2")
+        self.assertEqual(self.git("rev-parse", "HEAD"), self.git("ls-remote", "origin", "refs/heads/main").split()[0])
 
 
 if __name__ == "__main__":

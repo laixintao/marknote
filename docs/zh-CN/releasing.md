@@ -7,7 +7,7 @@
 1. 将项目提交到 Git，并推送到你自己的 GitHub 仓库。仓库默认分支必须包含 `.github/workflows/` 下的工作流。
 2. 配置名为 `origin` 的 GitHub 远端，确保你可以推送标签。支持 github.com 的 HTTPS 与 SSH 地址；可用 `REMOTE=其他远端名` 指定远端。
 3. 在仓库设置中启用 Actions。CI 仅需读取权限；Release 的发布 job 已单独声明 `contents: write`，使用内置 `GITHUB_TOKEN`，无需另配发布 token。
-4. 安装 [GitHub CLI](https://cli.github.com/) 并执行 `gh auth login`。本地身份需要仓库写入权限，以及查看 Actions 运行的权限。
+4. 安装 Make、Python 3 和 Git，Git 身份需要推送 `main` 和标签的权限。GitHub CLI 可用于查看 Actions，但 `make release` 不要求安装它。
 
 初次接入时可使用下面的命令，其中仓库地址需要换成你自己的：
 
@@ -16,52 +16,47 @@ git remote add origin git@github.com:YOUR_ACCOUNT/YOUR_REPOSITORY.git
 git add .
 git commit -m "Prepare Marknote for release"
 git push -u origin HEAD
-gh auth login
 ```
 
-如果已有远端或提交，请只执行尚未完成的步骤。`make release` 会校验 Git 状态并推送标签，不会自动创建仓库、提交代码或覆盖既有版本。
+如果已有远端或提交，请只执行尚未完成的步骤。`make release` 会生成发布提交和标签；应用代码修改需要事先提交。
 
-## 一键发布当前版本
+## 一键发布下一版本
 
-确认代码和更新记录已提交、当前提交已推送，运行：
+在干净且已同步远端的 `main` 分支上，运行：
 
 ```sh
 make release
 ```
 
-命令从 `Resources/Info.plist` 读取版本（当前为 `1.2.1`），依次执行：
+遵循统一的 [make release SOP](https://github.com/laixintao/homebrew-tap/blob/main/docs/RELEASE_STANDARD.md#maintainer-command)，无需手动修改版本或 changelog。命令依次执行：
 
-1. 检查干净的工作区、GitHub 远端、当前提交、Release 工作流、更新记录及版本标签。
-2. 创建注释标签 `v1.2.1` 并推送，自动触发 Release 工作流。
+1. 检查干净的 `main` 工作区、远端历史、新提交、版本标签和 Git 身份。
+2. 自动递增 patch 版本和构建号，根据当前版本标签之后的提交生成更新记录（保留已准备好的条目），创建发布提交和注释标签，原子推送 `main` 与标签。例如 `1.2.1` 自动变为 `1.2.2`。
 3. GitHub 在 `macos-15`（arm64）和 `macos-15-intel`（x86_64）上分别检查文档、运行核心和原生窗口测试、构建并验证签名、打包。
 4. 发布 job 检查两个安装包的 SHA-256、内嵌版本及实际 Mach-O 架构；从更新记录生成双语发布说明。
 5. 校验两个架构的全部 DMG / ZIP，生成 `SHA256SUMS` 和 GitHub 构建来源证明。
-6. 创建 Release 草稿，全部附件上传成功后再公开发布。终端等待 CI 完成并输出 Release 链接。
+6. 创建 Release 草稿，全部附件上传成功后再公开发布。本地命令在推送成功后返回，并输出 Actions 和待发布 Release 的链接；在 Actions 中确认发布结果。
 
 GitHub 官方的 [runner 列表](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)与 [Release CLI 文档](https://cli.github.com/manual/gh_release_create)说明了这里使用的平台与发布接口。
 
-可先运行只读检查，或明确要求版本一致：
+可先检查下一版本（不修改源文件或推送），也可以指定一个更高版本：
 
 ```sh
 make release-check
-make release VERSION=1.2.1
+make release VERSION=1.3.0
 ```
 
-`VERSION` 在发布和打包时是校验值，不会静默修改源文件。当前版本只接受 `X.Y.Z` 的稳定版本号。
+对于 `make release`，`VERSION` 指定下一版本，必须高于当前源文件版本，且采用稳定版 `X.Y.Z` 格式。对于 `make package`，它仍是已有版本的校验值。
 
-## 准备下一个版本
+## 日常 SOP
 
 ```sh
-make version VERSION=1.3.0
-# 编辑 CHANGELOG.md，添加非空的 ## [1.3.0] 更新记录
-make verify
-git add Resources/Info.plist CHANGELOG.md
-git commit -m "Release 1.3.0"
-git push origin HEAD
+git switch main
+git pull --ff-only
 make release
 ```
 
-`make version` 更新应用版本并递增构建号；再次设置相同版本不会重复增加构建号。还修改了其他代码时，请一并提交。版本号、标签及 ZIP 中的应用版本必须一致。
+原有 `make version` 保留用于开发，但发布前不再需要运行它。如果要精心编写更新说明，事先提交非空的 `## [<下一版本>]` 条目，脚本会保留它。Release 成功后，Tap 每六小时自动同步 cask，也可手动运行 Tap 的 Update casks 工作流。
 
 ## 本地命令与产物
 
@@ -84,11 +79,11 @@ make release
 ## 失败后恢复
 
 - **代码未提交、版本不匹配或标签指向其他提交**：修正后重新运行；脚本不会强推或移动标签。
-- **标签推送失败**：本地标签保留，网络或权限修复后再次运行 `make release`。
+- **推送失败**：发布提交和标签保留在本地。网络或权限修复后，执行终端打印的完整 `git push --atomic ...` 命令；不要再次运行 `make release` 来重试同一版本。
 - **构建 / 测试失败**：检查 Actions 日志及 `marknote-checks-*` 附件。环境瞬时故障可在 GitHub 点击 Re-run failed jobs。需要修改代码时使用新版本、新提交和新标签。
 - **附件上传失败**：Release 保持草稿。重新运行失败的发布 job 会补传草稿附件；已公开版本不会被替换。
 - **没有触发工作流**：确认 Actions 已启用、默认分支已有 Release 工作流、推送标签使用的是个人身份。也可在 Actions → Release → Run workflow 中输入已存在的标签，例如 `v1.1.0`。
-- **等待中断或运行失败**：终端已输出的 Actions 链接仍可继续查看；中断本地命令不会取消云端工作流。
+- **本地命令结束**：云端仍在继续构建发布；推送成功不等于 Release 已公开，请在打印的 Actions 链接中确认结果。
 
 Release 不会在测试失败时公开。已有公开版本需要改动时，请递增版本发布。
 

@@ -19,8 +19,9 @@ help:
 	  'make installer             Build and verify the drag-to-install DMG' \
 	  'make screenshots           Refresh real product screenshots in docs/images' \
 	  'make version VERSION=1.3.0 Update version and increment build number' \
-	  'make release-check         Read-only release preflight (requires GitHub)' \
-	  'make release               Push version tag; wait for CI to publish assets' '' \
+	  'make release-check         Check the next release without editing files or pushing' \
+	  'make release               Bump patch, update changelog, commit, tag, and push; CI publishes' \
+	  'make release VERSION=1.3.0 Publish a specific newer version' '' \
 	  'Options: CONFIGURATION=debug, REMOTE=origin, VERSION=1.2.0'
 
 build:
