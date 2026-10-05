@@ -79,7 +79,7 @@ make package      # Versioned DMG + ZIP + SHA-256 for this Mac
 make release      # Push a version tag; wait for GitHub CI to publish release assets
 ```
 
-[CI](.github/workflows/ci.yml) checks Apple Silicon and Intel builds on branch pushes and pull requests, and retains packages, reports, and screenshots. The [Release workflow](.github/workflows/release.yml) publishes DMG installers, ZIP archives for both architectures, and `SHA256SUMS.txt` only after both platforms pass. Interrupted uploads leave an unpublished draft for recovery.
+[CI](.github/workflows/ci.yml) checks Apple Silicon and Intel builds on branch pushes and pull requests, and retains packages, reports, and screenshots. The [Release workflow](.github/workflows/release.yml) publishes DMG installers, ZIP archives for both architectures, and `SHA256SUMS` only after both platforms pass. It also creates GitHub build-provenance attestations for every installer and archive. Interrupted uploads leave an unpublished draft for recovery.
 
 Before your first release, commit and push the project to GitHub, configure `origin`, enable Actions, and log in with `gh`. See the [release guide](docs/en/releasing.md) / [中文发布指南](docs/zh-CN/releasing.md) for version updates, retries, and optional Developer ID signing and notarization.
 
