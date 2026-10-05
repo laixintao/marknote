@@ -76,12 +76,12 @@ make help         # List commands
 make verify       # Repository checks, release-tool tests, core and native UI tests
 make installer    # Build and verify a drag-to-install DMG
 make package      # Versioned DMG + ZIP + SHA-256 for this Mac
-make release      # Push a version tag; wait for GitHub CI to publish release assets
+make release      # Bump patch, update changelog, commit, tag, and push; CI publishes
 ```
 
 [CI](.github/workflows/ci.yml) checks Apple Silicon and Intel builds on branch pushes and pull requests, and retains packages, reports, and screenshots. The [Release workflow](.github/workflows/release.yml) publishes DMG installers, ZIP archives for both architectures, and `SHA256SUMS` only after both platforms pass. It also creates GitHub build-provenance attestations for every installer and archive. Interrupted uploads leave an unpublished draft for recovery.
 
-Before your first release, commit and push the project to GitHub, configure `origin`, enable Actions, and log in with `gh`. See the [release guide](docs/en/releasing.md) / [中文发布指南](docs/zh-CN/releasing.md) for version updates, retries, and optional Developer ID signing and notarization.
+To publish from a clean, up-to-date `main`, run `make release`. It prepares the next patch automatically; use `make release VERSION=1.3.0` for a specific newer version. Before your first release, configure `origin` and enable Actions. See the [release guide](docs/en/releasing.md) / [中文发布指南](docs/zh-CN/releasing.md) for retries and optional Developer ID signing and notarization.
 
 ## Documentation
 

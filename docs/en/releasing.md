@@ -7,7 +7,7 @@
 1. Commit the project and push it to your own GitHub repository. The default branch must include the workflows under `.github/workflows/`.
 2. Configure a GitHub remote named `origin` and make sure you can push tags. github.com HTTPS and SSH URLs are supported; use `REMOTE=another-name` to select another remote.
 3. Enable Actions in repository settings. CI has read-only permissions. The Release publish job explicitly requests `contents: write` and uses the built-in `GITHUB_TOKEN`; no separate publishing token is needed.
-4. Install [GitHub CLI](https://cli.github.com/) and run `gh auth login`. Your local identity needs repository write access and permission to view Actions runs.
+4. Install Make, Python 3, and Git. Your Git identity needs permission to push `main` and tags. GitHub CLI is optional for watching Actions; it is not required by `make release`.
 
 For a new repository, replace the URL below with your own:
 
@@ -16,52 +16,47 @@ git remote add origin git@github.com:YOUR_ACCOUNT/YOUR_REPOSITORY.git
 git add .
 git commit -m "Prepare Marknote for release"
 git push -u origin HEAD
-gh auth login
 ```
 
-Skip setup steps you have already completed. `make release` checks Git state and pushes a tag; it does not create a repository, commit changes, or overwrite published versions.
+Skip setup steps you have already completed. The command creates a release commit and tag; commit your application changes first.
 
 ## Release with one command
 
-Once the code and changelog are committed and the current commit is pushed:
+From a clean, up-to-date `main` branch containing the changes you want to publish:
 
 ```sh
 make release
 ```
 
-The command reads the version from `Resources/Info.plist` (currently `1.2.1`) and:
+This follows the shared [make release SOP](https://github.com/laixintao/homebrew-tap/blob/main/docs/RELEASE_STANDARD.md#maintainer-command). No manual version bump or changelog edit is required. The command:
 
-1. Checks a clean worktree, GitHub remote, pushed commit, active Release workflow, changelog entry, and version tags.
-2. Creates and pushes an annotated `v1.2.1` tag, triggering the Release workflow.
+1. Checks a clean `main` worktree, remote history, new commits, version tags, and Git identity.
+2. Bumps the patch version and build number, generates a changelog entry from commits since the current version tag (preserving a prepared entry), creates a release commit and annotated tag, and atomically pushes `main` and the tag. For example, `1.2.1` becomes `1.2.2`.
 3. Runs repository checks, core tests, and native window tests on `macos-15` (arm64) and `macos-15-intel` (x86_64), then builds, verifies signatures, and packages each architecture.
 4. Verifies all download checksums, ZIP-embedded app versions, actual Mach-O CPU types, and DMG trailers; generates bilingual notes from the changelog.
 5. Verifies all four DMG / ZIP files, writes `SHA256SUMS`, and creates GitHub build-provenance attestations.
-6. Creates a draft and publishes it only after every upload succeeds. The local command waits for CI and prints the Release URL.
+6. Creates a draft and publishes it only after every upload succeeds. The local command returns after pushing and prints the Actions and future Release URLs; follow Actions to confirm publication.
 
 See GitHub's [runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) and [Release CLI documentation](https://cli.github.com/manual/gh_release_create) for the platforms and publishing interface used here.
 
-Run a read-only preflight, or explicitly require a version match:
+Check the next release without editing source files or pushing, or choose a specific newer version:
 
 ```sh
 make release-check
-make release VERSION=1.2.1
+make release VERSION=1.3.0
 ```
 
-For publishing and packaging, `VERSION` is an assertion, not a silent source-file override. Stable `X.Y.Z` versions are supported.
+For `make release`, `VERSION` selects the next stable `X.Y.Z` version and must be newer than the source version. For `make package`, it remains an assertion of the already-recorded version.
 
-## Prepare the next version
+## Daily SOP
 
 ```sh
-make version VERSION=1.3.0
-# Add a nonempty ## [1.3.0] entry to CHANGELOG.md
-make verify
-git add Resources/Info.plist CHANGELOG.md
-git commit -m "Release 1.3.0"
-git push origin HEAD
+git switch main
+git pull --ff-only
 make release
 ```
 
-`make version` updates the app version and increments the build number. Repeating the same version does not increment it again. Commit any other source changes as well. The source version, tag, and app version inside the ZIP must agree.
+The existing `make version` command remains available for development, but is not a prerequisite for publication. If you want curated notes, commit a nonempty `## [<next-version>]` entry before releasing; it will be preserved. After Release succeeds, this app's Homebrew cask updates through the tap's six-hour schedule or its manually triggered Update casks workflow.
 
 ## Local commands and output
 
@@ -84,11 +79,11 @@ Local packaging targets the current Mac architecture. GitHub's two native runner
 ## Recover from a failure
 
 - **Dirty worktree, wrong version, or tag at another commit:** fix the problem and retry. Tags are never force-pushed or moved.
-- **Tag push failed:** the local tag remains; rerun `make release` after fixing connectivity or permissions.
+- **Push failed:** the release commit and tag remain locally. Fix connectivity or permissions, then run the exact `git push --atomic ...` command printed by the helper. Do not run `make release` again to retry the same version.
 - **Build or tests failed:** inspect Actions logs and `marknote-checks-*` artifacts. For a transient environment failure, use Re-run failed jobs. Code fixes require a new commit, version, and tag.
 - **Asset upload failed:** the Release stays a draft. Rerun the failed publish job to upload the draft assets again; already published releases are never replaced.
 - **No workflow started:** check Actions settings, the default-branch workflow, and that the tag was pushed with your own identity. You can also use Actions → Release → Run workflow with an existing tag such as `v1.1.0`.
-- **Local wait was interrupted or failed:** follow the printed Actions URL. Stopping the local command does not cancel the cloud workflow.
+- **Local command finished:** publication continues in Actions; successful push alone does not mean the release is public yet.
 
 Failed tests never publish a release. Use a new version to change an already published release.
 

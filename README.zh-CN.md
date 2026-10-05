@@ -64,12 +64,12 @@ make help         # 查看全部命令
 make verify       # 文档 / 发布工具检查、核心测试、真实窗口测试
 make installer    # 生成并验证拖放安装的 DMG
 make package      # 当前 Mac 架构的 DMG + ZIP + SHA-256
-make release      # 推送版本标签，等待 GitHub CI 创建 Release 并上传产物
+make release      # 自动升 patch、生成更新记录、提交并推送标签；CI 完成发布
 ```
 
 [CI](.github/workflows/ci.yml) 在每次分支推送与 PR 时验证 Apple Silicon、Intel 两种构建，并保留安装包、测试报告及截图。[Release 工作流](.github/workflows/release.yml)只在两个平台都通过后发布两个架构的 DMG、ZIP 和 `SHA256SUMS`，并为安装包生成 GitHub 构建来源证明；上传失败保留草稿，可重试。
 
-首次发布需先将仓库提交并推送到 GitHub、配置 `origin`、启用 Actions，并登录 `gh`。日常升级、失败恢复及 Developer ID 签名 / 公证方式见[中文发布指南](docs/zh-CN/releasing.md) / [English release guide](docs/en/releasing.md)。
+日常在干净且已同步远端的 `main` 上运行 `make release`，自动准备下一 patch；指定更高版本可用 `make release VERSION=1.3.0`。首次发布需先配置 `origin` 并启用 Actions。失败恢复及 Developer ID 签名 / 公证方式见[中文发布指南](docs/zh-CN/releasing.md) / [English release guide](docs/en/releasing.md)。
 
 ## 项目文档
 
