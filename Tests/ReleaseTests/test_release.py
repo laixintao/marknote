@@ -84,7 +84,7 @@ class ReleaseTests(unittest.TestCase):
         archives = self.pair()
         assets = release.verify_assets(self.directory, self.version)
         self.assertEqual(assets[:2], archives)
-        self.assertEqual(assets[-1].name, "SHA256SUMS.txt")
+        self.assertEqual(assets[-1].name, "SHA256SUMS")
         self.assertEqual(len(assets[-1].read_text().splitlines()), 4)
 
     def test_ditto_chinese_paths_can_be_verified_on_linux(self):
@@ -159,7 +159,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("--draft", calls[create])
         self.assertLess(create, upload)
         self.assertLess(upload, publish)
-        self.assertTrue(any(str(part).endswith("SHA256SUMS.txt") for part in calls[upload]))
+        self.assertTrue(any(str(part).endswith("SHA256SUMS") for part in calls[upload]))
 
     def test_failed_upload_never_publishes(self):
         self.pair()

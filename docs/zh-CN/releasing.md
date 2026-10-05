@@ -35,7 +35,8 @@ make release
 2. 创建注释标签 `v1.2.1` 并推送，自动触发 Release 工作流。
 3. GitHub 在 `macos-15`（arm64）和 `macos-15-intel`（x86_64）上分别检查文档、运行核心和原生窗口测试、构建并验证签名、打包。
 4. 发布 job 检查两个安装包的 SHA-256、内嵌版本及实际 Mach-O 架构；从更新记录生成双语发布说明。
-5. 创建 Release 草稿，上传两个架构的 DMG、ZIP 和 `SHA256SUMS.txt`，全部成功后公开发布。终端等待 CI 完成并输出 Release 链接。
+5. 校验两个架构的全部 DMG / ZIP，生成 `SHA256SUMS` 和 GitHub 构建来源证明。
+6. 创建 Release 草稿，全部附件上传成功后再公开发布。终端等待 CI 完成并输出 Release 链接。
 
 GitHub 官方的 [runner 列表](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)与 [Release CLI 文档](https://cli.github.com/manual/gh_release_create)说明了这里使用的平台与发布接口。
 

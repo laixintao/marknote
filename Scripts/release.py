@@ -169,7 +169,7 @@ def verify_assets(directory, release_version):
         installer = directory / f"Marknote-{release_version}-macos-{arch}.dmg"
         checksums.append(verify_installer(installer))
         assets.append(installer)
-    manifest = directory / "SHA256SUMS.txt"
+    manifest = directory / "SHA256SUMS"
     manifest.write_text("\n".join(checksums) + "\n")
     return assets + [manifest]
 
@@ -184,7 +184,7 @@ def release_notes(tag):
         "### Downloads / 下载\n\n"
         "- **Apple Silicon (M series):** `macos-arm64.dmg` (installer), `.zip` (portable archive)\n"
         "- **Intel:** `macos-x86_64.dmg` (installer), `.zip` (portable archive)\n"
-        "- **macOS 13+** · Verify downloads with `SHA256SUMS.txt`.\n\n"
+        "- **macOS 13+** · Verify downloads with `SHA256SUMS`.\n\n"
         "Open the DMG and drag 墨笺.app to Applications, then eject the installer. / 打开 DMG，将 墨笺.app 拖入应用程序，然后推出安装磁盘。\n\n"
         "In Marknote, choose **Set as Default Markdown Editor…** to open .md files by double-clicking. / 在墨笺菜单选择“设为默认 Markdown 编辑器…”即可通过双击打开 .md 文件。\n\n"
         "CI builds use ad-hoc signatures and are not Apple-notarized. / CI 构建使用临时签名，未经 Apple 公证。\n"
@@ -216,7 +216,7 @@ def publish(tag, directory):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["check", "start", "publish", "verify"])
+    parser.add_argument("command", choices=["check", "start", "prepare", "publish", "verify"])
     parser.add_argument("--tag", default="")
     parser.add_argument("--artifacts", type=Path, default=ROOT / "dist/releases")
     parser.add_argument("--archive", type=Path)
@@ -227,6 +227,9 @@ if __name__ == "__main__":
             preflight()
         elif args.command == "start":
             start()
+        elif args.command == "prepare":
+            assets = verify_assets(args.artifacts, version.check_tag(args.tag))
+            print(f"Verified {len(assets) - 1} release assets and wrote {assets[-1].name}.")
         elif args.command == "publish":
             publish(args.tag, args.artifacts)
         else:

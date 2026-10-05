@@ -35,7 +35,8 @@ The command reads the version from `Resources/Info.plist` (currently `1.2.1`) an
 2. Creates and pushes an annotated `v1.2.1` tag, triggering the Release workflow.
 3. Runs repository checks, core tests, and native window tests on `macos-15` (arm64) and `macos-15-intel` (x86_64), then builds, verifies signatures, and packages each architecture.
 4. Verifies all download checksums, ZIP-embedded app versions, actual Mach-O CPU types, and DMG trailers; generates bilingual notes from the changelog.
-5. Creates a draft, uploads all four DMG / ZIP files and `SHA256SUMS.txt`, and publishes only after all uploads succeed. The local command waits for CI and prints the Release URL.
+5. Verifies all four DMG / ZIP files, writes `SHA256SUMS`, and creates GitHub build-provenance attestations.
+6. Creates a draft and publishes it only after every upload succeeds. The local command waits for CI and prints the Release URL.
 
 See GitHub's [runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) and [Release CLI documentation](https://cli.github.com/manual/gh_release_create) for the platforms and publishing interface used here.
 

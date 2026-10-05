@@ -23,7 +23,7 @@ For a manual installation, on the [Releases page](https://github.com/laixintao/m
 
 Open the DMG and drag `墨笺.app` onto the Applications shortcut. Eject the disk image, then open the installed app from Applications. For an update, quit the old version before replacing it; your Markdown files and preferences remain separate. ZIP archives are available as an alternative.
 
-Download `SHA256SUMS.txt` and compare its matching entry with `shasum -a 256 installer.dmg`. If all four DMG / ZIP files have been downloaded, `shasum -a 256 -c SHA256SUMS.txt` verifies all of them.
+Download `SHA256SUMS` and compare its matching entry with `shasum -a 256 installer.dmg`. If all four DMG / ZIP files have been downloaded, `shasum -a 256 -c SHA256SUMS` verifies all of them.
 
 Default GitHub builds are ad-hoc signed and are not Apple-notarized. macOS may block the first launch; follow the system prompt and [Apple's app security guidance](https://support.apple.com/102445), or build locally on your Mac. Optional Developer ID signing and notarization are covered in the [release guide](releasing.md).
 

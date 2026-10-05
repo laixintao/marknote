@@ -15,7 +15,7 @@
 
 打开 DMG，将 `墨笺.app` 拖到 Applications（应用程序）快捷方式，推出安装磁盘，然后从“应用程序”打开。更新时先退出旧版本再替换应用，文稿和偏好设置会保留。也提供 ZIP 压缩包。
 
-可下载 `SHA256SUMS.txt`，用 `shasum -a 256 安装包.dmg` 与对应一行比较；若全部四个 DMG / ZIP 文件均已下载，可执行 `shasum -a 256 -c SHA256SUMS.txt`。
+可下载 `SHA256SUMS`，用 `shasum -a 256 安装包.dmg` 与对应一行比较；若全部四个 DMG / ZIP 文件均已下载，可执行 `shasum -a 256 -c SHA256SUMS`。
 
 默认 GitHub 构建使用临时签名，未经 Apple 公证，macOS 可能阻止首次打开。请根据系统提示及 [Apple 的应用安全说明](https://support.apple.com/102445)处理；也可从源码在自己的 Mac 上构建。Developer ID 签名与公证流程见[发布指南](releasing.md)。
 
