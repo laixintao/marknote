@@ -15,6 +15,7 @@ let suite = MarkdownTests()
 let localization = LocalizationTests()
 let editing = EditingToolsTests()
 let tests: [(String, () throws -> Void)] = [
+    ("Mermaid blocks and offline export", suite.testMermaidBlocksAndOfflineExport),
     ("CommonMark and GFM", suite.testCommonMarkAndGFM),
     ("HTML and unsafe links", suite.testHTMLAndUnsafeLinksAreInert),
     ("Nested lists, reference links and escapes", suite.testNestedListsReferenceLinksAndEscapes),

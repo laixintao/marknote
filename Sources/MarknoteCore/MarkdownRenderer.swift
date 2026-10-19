@@ -23,6 +23,12 @@ public final class MarkdownRenderer {
             return '';
         }
         marked.use({gfm:true, breaks:false, renderer: {
+            code({text,lang}) {
+                if ((lang || '').trim().split(/\s+/)[0].toLowerCase() === 'mermaid') {
+                    return '<pre class="mermaid">'+escapeHTML(text)+'</pre>\n';
+                }
+                return false;
+            },
             html({text}) { return escapeHTML(text); },
             link({href,title,tokens}) {
                 const label = this.parser.parseInline(tokens);
@@ -56,14 +62,47 @@ public final class MarkdownRenderer {
     public func page(_ markdown: String, title: String? = nil, relativeTo directory: URL? = nil, dark: Bool? = nil) -> String {
         let content = body(markdown, relativeTo: directory)
         let theme = dark.map { $0 ? "dark" : "light" } ?? "auto"
+        let nonce = UUID().uuidString
+        let scripts = content.contains("<pre class=\"mermaid\">") ? "<script nonce=\"\(nonce)\">" + Self.mermaidScript + "</script><script nonce=\"\(nonce)\">" + Self.diagramScript + "</script>" : ""
         return """
         <!doctype html><html lang="\(L10n.shared.language.rawValue)" data-theme="\(theme)"><head><meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: http: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: http: data:; style-src 'unsafe-inline'; script-src 'nonce-\(nonce)'; base-uri 'none'; form-action 'none'">
         <title>\(Self.escape(title ?? L10n.text(.appName)))</title><style>\(Self.css)</style></head>
-        <body><article>\(content.isEmpty ? "<div class='empty'><span>" + Self.escape(L10n.text(.emptyTitle)) + "</span><p>" + Self.escape(L10n.text(.emptyMessage)) + "</p></div>" : content)</article></body></html>
+        <body><article>\(content.isEmpty ? "<div class='empty'><span>" + Self.escape(L10n.text(.emptyTitle)) + "</span><p>" + Self.escape(L10n.text(.emptyMessage)) + "</p></div>" : content)</article>\(scripts)</body></html>
         """
     }
+
+    // Pinned, bundled runtime: exports and previews work without a CDN connection.
+    private static let mermaidScript: String = {
+        let url = AppResources.bundle.url(forResource: "mermaid.min", withExtension: "js")!
+        return try! String(contentsOf: url, encoding: .utf8)
+            .replacingOccurrences(of: "</script", with: "<\\/script", options: .caseInsensitive)
+    }()
+
+    private static let diagramScript = #"""
+    window.marknoteReady = (async () => {
+        const dark = document.documentElement.dataset.theme === 'dark' ||
+            (document.documentElement.dataset.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({startOnLoad:false, securityLevel:'strict', theme:dark ? 'dark' : 'default',
+            suppressErrorRendering:true});
+        let index = 0;
+        for (const block of document.querySelectorAll('pre.mermaid')) {
+            const source = block.textContent;
+            try {
+                const {svg} = await mermaid.render('marknote-diagram-' + index++, source);
+                const diagram = document.createElement('div');
+                diagram.className = 'mermaid-diagram';
+                diagram.innerHTML = svg;
+                block.replaceWith(diagram);
+            } catch (error) {
+                // Keep invalid/incomplete diagrams readable while editing.
+                block.classList.add('mermaid-error');
+                block.title = String(error);
+            }
+        }
+    })();
+    """#
 
     private func localImage(_ path: String) -> String {
         guard let root = baseDirectory?.standardizedFileURL.resolvingSymlinksInPath(),
@@ -98,6 +137,7 @@ public final class MarkdownRenderer {
     pre{padding:20px 22px;overflow:auto;background:var(--soft);border:1px solid var(--line);border-radius:8px;line-height:1.7}pre code{padding:0;background:none;white-space:pre}
     table{width:100%;border-collapse:collapse;margin:24px 0;font-size:14px;display:block;overflow:auto}th,td{border:1px solid var(--line);padding:9px 15px;text-align:left}th{background:var(--soft);font-weight:600}
     img{max-width:100%;height:auto;border-radius:6px}hr{border:0;border-top:1px solid var(--line);margin:32px 0}del{color:var(--muted)}.image-placeholder{color:var(--muted);font-size:14px}
+    .mermaid-diagram{overflow:auto;text-align:center;margin:24px 0}.mermaid-diagram svg{max-width:100%;height:auto}.mermaid-error{border-color:#b66}
     .empty{padding-top:100px;text-align:center;color:var(--muted)}.empty span{font-size:22px;color:var(--ink)}.empty p{font-size:13px}
     @media(max-width:480px){article{padding:30px 25px 70px}h1{font-size:28px}}
     @media print{html{--paper:#fff;--ink:#222;--muted:#666;--line:#ddd;--soft:#f5f5f5;--accent:#387963;color-scheme:light}article{padding:0;max-width:none}pre,blockquote,img,tr{break-inside:avoid}h1,h2,h3{break-after:avoid}a{color:inherit}}

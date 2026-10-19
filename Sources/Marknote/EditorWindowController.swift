@@ -40,7 +40,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         documentModel = document
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
-        configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         preview = WKWebView(frame: .zero, configuration: configuration)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1220, height: 800),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
@@ -388,9 +388,14 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        previewReady = true
-        if pendingPreviewHeading != nil { scrollPreviewToHeading() }
-        else { webView.evaluateJavaScript("window.scrollTo(0, \(previewScroll))", completionHandler: nil) }
+        let revision = previewRevision
+        Task { @MainActor [weak self] in
+            _ = try? await webView.callAsyncJavaScript("await window.marknoteReady", arguments: [:], in: nil, contentWorld: .page)
+            guard let self, self.previewRevision == revision else { return }
+            self.previewReady = true
+            if self.pendingPreviewHeading != nil { self.scrollPreviewToHeading() }
+            else { webView.evaluateJavaScript("window.scrollTo(0, \(self.previewScroll))", completionHandler: nil) }
+        }
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {

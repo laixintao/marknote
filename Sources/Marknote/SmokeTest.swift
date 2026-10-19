@@ -113,6 +113,14 @@ import MarknoteCore
             controller.toggleSidebar()
             controller.toggleSidebar()
             try check(controller.window?.isVisible == true, "显示模式与专注模式切换后窗口正常")
+            document.text = "```mermaid\ngraph TD\n A[Start] --> B[Done]\n```\n\n```mermaid\nnot a diagram\n```\n\n```mermaid\nsequenceDiagram\n Alice->>Bob: Hello\n```\n\n<script>window.untrusted = true</script>"
+            controller.reloadDocument()
+            try await waitForPreview(controller)
+            let diagrams = try await controller.preview.evaluateJavaScript("({count:document.querySelectorAll('.mermaid-diagram svg').length,errors:document.querySelectorAll('.mermaid-error').length,safe:window.untrusted !== true})") as? [String: Any]
+            try check((diagrams?["count"] as? Int) == 2, "Mermaid 离线渲染流程图及序列图")
+            try check((diagrams?["errors"] as? Int) == 1, "Mermaid 语法错误保留源码且不影响其他图表")
+            try check((diagrams?["safe"] as? Bool) == true, "启用 Mermaid 后文稿脚本仍不可执行")
+            try await screenshot(controller, to: directory.appendingPathComponent("mermaid.png"))
             document.text = welcomeMarkdown
             controller.reloadDocument()
             try await waitForPreview(controller)

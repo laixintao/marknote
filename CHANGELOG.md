@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-10-19
+
+- Fix an extra empty window appearing when launching the app by opening a Markdown file. / 修复通过 Markdown 文件启动应用时额外打开空白窗口的问题。
+- Render Mermaid code blocks offline in previews and HTML/PDF exports, with light/dark themes and readable source fallback for invalid diagrams. / 支持 Mermaid 图表离线预览及 HTML/PDF 导出，适配浅色和深色主题，语法错误时保留源码。
+- Keep document scripts inert while enabling the bundled diagram renderer. / 启用内置图表渲染器后，仍禁止执行文稿中的脚本。
+
 ## [1.2.1] - 2026-09-22
 
 - Fix outline resizing, widen the draggable edge, and retain its width when toggling the outline or focus mode. / 修复大纲宽度拖动，扩大边界拖动区域，并在切换大纲和专注模式时保留宽度。

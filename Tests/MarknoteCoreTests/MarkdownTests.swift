@@ -88,6 +88,20 @@ final class MarkdownTests {
         expectEqual(MarkdownText.wordCount("中文English混合"), 5)
     }
 
+    func testMermaidBlocksAndOfflineExport() {
+        let renderer = MarkdownRenderer()
+        let source = "```mermaid\ngraph TD\n A[<script>alert(1)</script>] --> B\n```"
+        let body = renderer.body(source)
+        expect(body.contains("<pre class=\"mermaid\">"))
+        expect(body.contains("&lt;script&gt;"))
+        expectFalse(body.contains("<script>"))
+        let page = renderer.page(source)
+        expect(page.contains("window.marknoteReady"))
+        expect(page.contains("script-src 'nonce-"))
+        expectFalse(page.contains("<script src="))
+        expect(renderer.body("```swift\nlet x = 1\n```").contains("language-swift"))
+    }
+
     func testStandaloneExportAndEmptyPreview() {
         let renderer = MarkdownRenderer()
         let html = renderer.page("# content", title: "<unsafe>")

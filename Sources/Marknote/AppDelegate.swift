@@ -22,15 +22,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
             Task { @MainActor in await SmokeTest.run(in: directory) }
             return
         }
-        if documentController.documents.isEmpty {
-            if !UserDefaults.standard.bool(forKey: "hasOpenedMarknote") {
-                openWelcome()
-                UserDefaults.standard.set(true, forKey: "hasOpenedMarknote")
-            } else { documentController.newDocument(nil) }
-        }
     }
 
-    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool { false }
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        // AppKit calls this only for an ordinary launch, after routing open-file events.
+        // Creating a draft in didFinishLaunching races asynchronous document opening.
+        guard !CommandLine.arguments.contains("--smoke-test"),
+              !CommandLine.arguments.contains("--screenshots") else { return false }
+        guard documentController.documents.isEmpty else { return false }
+        if !UserDefaults.standard.bool(forKey: "hasOpenedMarknote") {
+            openWelcome()
+            UserDefaults.standard.set(true, forKey: "hasOpenedMarknote")
+            return false
+        }
+        return true
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { documentController.newDocument(nil) }
         return true
