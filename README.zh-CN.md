@@ -78,4 +78,4 @@ make release      # 自动升 patch、生成更新记录、提交并推送标签
 - [五款 Markdown 工具调研](docs/zh-CN/market-research.md) / [English research report](docs/research/markdown-tools-2026.md)
 - [更新记录](CHANGELOG.md) · [贡献指南](CONTRIBUTING.md) · [本地验证记录](VALIDATION.md)
 
-Markdown 解析使用内置 [Marked 15.0.12](https://github.com/markedjs/marked/tree/v15.0.12)，其 [MIT 许可证](Sources/MarknoteCore/Resources/marked-LICENSE.md)随应用分发。原始 HTML 按文字显示；预览不执行文稿脚本。远程图片会联网加载，本地图片受文稿目录边界限制。Mermaid 代码块使用内置 [Mermaid 10.9.5](https://github.com/mermaid-js/mermaid/tree/v10.9.5)（[MIT 许可证](Sources/MarknoteCore/Resources/mermaid-LICENSE.txt)）离线渲染，支持 HTML 和 PDF 导出；图表语法错误时保留源码。暂不支持数学公式或插件。
+Markdown 解析使用内置 [Marked 15.0.12](https://github.com/markedjs/marked/tree/v15.0.12)，其 [MIT 许可证](Sources/MarknoteCore/Resources/marked-LICENSE.md)随应用分发。原始 HTML 按文字显示；预览不执行文稿脚本。远程图片会联网加载，本地图片受文稿目录边界限制。Mermaid 代码块使用内置 [Mermaid 10.9.5](https://github.com/mermaid-js/mermaid/tree/v10.9.5)（[MIT 许可证](Sources/MarknoteCore/Resources/mermaid-LICENSE.txt)）离线渲染，支持 HTML 和 PDF 导出；图表语法错误时保留源码。点击图表或“放大查看”可打开大图，支持滚轮或 +/− 缩放、拖动平移、适应窗口和 Esc 关闭。暂不支持数学公式或插件。

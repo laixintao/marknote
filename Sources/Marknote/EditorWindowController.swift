@@ -46,7 +46,6 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.minSize = NSSize(width: 780, height: 480)
         window.title = L10n.text(.appName)
-        window.subtitle = L10n.text(.tagline)
         window.tabbingMode = .automatic
         window.titlebarAppearsTransparent = true
         window.toolbarStyle = .unified
@@ -71,7 +70,6 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
             view.subviews.forEach(updateLabels)
         }
         if let content = window?.contentView { updateLabels(content) }
-        window?.subtitle = L10n.text(.tagline)
         synchronizeWindowTitleWithDocumentName()
         outline.setAccessibilityLabel(L10n.text(.outline))
         editor.setAccessibilityLabel(L10n.text(.editorAccessibility))
@@ -168,12 +166,12 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         ])
     }
 
-    private func paneHeader(_ title: L10n.Key, detail: L10n.Key, parent: NSView) -> NSView {
+    private func paneHeader(_ title: L10n.Key, parent: NSView) -> NSView {
         let header = NSView()
         parent.addSubview(header)
         header.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([header.topAnchor.constraint(equalTo: parent.topAnchor), header.leadingAnchor.constraint(equalTo: parent.leadingAnchor), header.trailingAnchor.constraint(equalTo: parent.trailingAnchor), header.heightAnchor.constraint(equalToConstant: 42)])
-        let stack = NSStackView(views: [PaddedLabel(title, size: 10, weight: .medium), NSView(), PaddedLabel(detail, size: 10, color: .tertiaryLabelColor)])
+        let stack = NSStackView(views: [PaddedLabel(title, size: 10, weight: .medium), NSView()])
         header.addSubview(stack)
         pin(stack, to: header, inset: NSEdgeInsets(top: 0, left: 24, bottom: 0, right: 24))
         let line = NSBox()
@@ -185,7 +183,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     }
 
     private func buildEditor() {
-        let header = paneHeader(.sourceHeader, detail: .sourceDetail, parent: sourcePane)
+        let header = paneHeader(.sourceHeader, parent: sourcePane)
         let scroll = NSScrollView()
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
@@ -227,7 +225,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     }
 
     private func buildPreview() {
-        let header = paneHeader(.previewHeader, detail: .previewDetail, parent: previewPane)
+        let header = paneHeader(.previewHeader, parent: previewPane)
         preview.navigationDelegate = self
         preview.setAccessibilityLabel(L10n.text(.previewAccessibility))
         previewPane.addSubview(preview)

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-10-20
+
+- Add an offline Mermaid diagram viewer with zoom, pan, fit, and keyboard controls. / 新增 Mermaid 图表放大查看，支持缩放、平移、适应窗口和键盘操作。
+- Remove decorative window and pane subtitles. / 移除窗口与编辑、预览栏中的装饰文案。
+
 ## [1.2.2] - 2026-10-19
 
 - Fix an extra empty window appearing when launching the app by opening a Markdown file. / 修复通过 Markdown 文件启动应用时额外打开空白窗口的问题。

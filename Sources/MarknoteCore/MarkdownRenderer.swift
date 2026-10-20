@@ -63,7 +63,7 @@ public final class MarkdownRenderer {
         let content = body(markdown, relativeTo: directory)
         let theme = dark.map { $0 ? "dark" : "light" } ?? "auto"
         let nonce = UUID().uuidString
-        let scripts = content.contains("<pre class=\"mermaid\">") ? "<script nonce=\"\(nonce)\">" + Self.mermaidScript + "</script><script nonce=\"\(nonce)\">" + Self.diagramScript + "</script>" : ""
+        let scripts = content.contains("<pre class=\"mermaid\">") ? "<script nonce=\"\(nonce)\">" + Self.mermaidScript + "</script><script nonce=\"\(nonce)\">" + Self.diagramViewerScript + Self.diagramScript + "</script>" : ""
         return """
         <!doctype html><html lang="\(L10n.shared.language.rawValue)" data-theme="\(theme)"><head><meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -80,6 +80,9 @@ public final class MarkdownRenderer {
             .replacingOccurrences(of: "</script", with: "<\\/script", options: .caseInsensitive)
     }()
 
+    private static let diagramViewerScript = try! String(
+        contentsOf: AppResources.bundle.url(forResource: "diagram-viewer", withExtension: "js")!, encoding: .utf8)
+
     private static let diagramScript = #"""
     window.marknoteReady = (async () => {
         const dark = document.documentElement.dataset.theme === 'dark' ||
@@ -95,6 +98,7 @@ public final class MarkdownRenderer {
                 diagram.className = 'mermaid-diagram';
                 diagram.innerHTML = svg;
                 block.replaceWith(diagram);
+                enableDiagramViewer(diagram);
             } catch (error) {
                 // Keep invalid/incomplete diagrams readable while editing.
                 block.classList.add('mermaid-error');
@@ -138,6 +142,14 @@ public final class MarkdownRenderer {
     table{width:100%;border-collapse:collapse;margin:24px 0;font-size:14px;display:block;overflow:auto}th,td{border:1px solid var(--line);padding:9px 15px;text-align:left}th{background:var(--soft);font-weight:600}
     img{max-width:100%;height:auto;border-radius:6px}hr{border:0;border-top:1px solid var(--line);margin:32px 0}del{color:var(--muted)}.image-placeholder{color:var(--muted);font-size:14px}
     .mermaid-diagram{overflow:auto;text-align:center;margin:24px 0}.mermaid-diagram svg{max-width:100%;height:auto}.mermaid-error{border-color:#b66}
+    .diagram-open,.diagram-toolbar button{font:13px -apple-system,BlinkMacSystemFont,sans-serif;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer}
+    .diagram-open{display:block;margin:8px auto}.mermaid-diagram>svg{cursor:zoom-in}
+    .diagram-viewer{width:calc(100vw - 32px);height:calc(100vh - 32px);max-width:none;max-height:none;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);overflow:hidden}
+    .diagram-viewer[open]{display:flex;flex-direction:column}.diagram-viewer::backdrop{background:#0009}
+    .diagram-toolbar{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line);flex-shrink:0}.diagram-toolbar output{min-width:48px;text-align:center;font-size:13px}.diagram-hint{flex:1;text-align:right;color:var(--muted);font-size:12px}
+    .diagram-stage{position:relative;flex:1;min-height:0;overflow:hidden;cursor:grab;touch-action:none;user-select:none}.diagram-stage.dragging{cursor:grabbing}.diagram-stage>svg{position:absolute;left:0;top:0;transform-origin:0 0}
+    @media(max-width:600px){.diagram-hint{display:none}.diagram-toolbar{gap:5px}.diagram-toolbar button:last-child{margin-left:auto}}
+    @media print{.diagram-open,.diagram-viewer{display:none!important}}
     .empty{padding-top:100px;text-align:center;color:var(--muted)}.empty span{font-size:22px;color:var(--ink)}.empty p{font-size:13px}
     @media(max-width:480px){article{padding:30px 25px 70px}h1{font-size:28px}}
     @media print{html{--paper:#fff;--ink:#222;--muted:#666;--line:#ddd;--soft:#f5f5f5;--accent:#387963;color-scheme:light}article{padding:0;max-width:none}pre,blockquote,img,tr{break-inside:avoid}h1,h2,h3{break-after:avoid}a{color:inherit}}

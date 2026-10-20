@@ -31,6 +31,7 @@ import MarknoteCore
             L10n.shared.select(.simplifiedChinese)
             UserDefaults.standard.set(false, forKey: "paragraphFocus")
             UserDefaults.standard.set(false, forKey: "typewriterScrolling")
+            try await verifyDiagrams(in: directory) { try check($0, $1) }
             let markdownTypes = MarkdownFileAssociation.contentTypes
             try check(!markdownTypes.isEmpty && markdownTypes.allSatisfy { !["public.plain-text", "public.text", "public.data"].contains($0.identifier) }, "默认打开方式只针对 Markdown 类型")
             var requestedTypes: [String] = []
@@ -113,14 +114,7 @@ import MarknoteCore
             controller.toggleSidebar()
             controller.toggleSidebar()
             try check(controller.window?.isVisible == true, "显示模式与专注模式切换后窗口正常")
-            document.text = "```mermaid\ngraph TD\n A[Start] --> B[Done]\n```\n\n```mermaid\nnot a diagram\n```\n\n```mermaid\nsequenceDiagram\n Alice->>Bob: Hello\n```\n\n<script>window.untrusted = true</script>"
-            controller.reloadDocument()
-            try await waitForPreview(controller)
-            let diagrams = try await controller.preview.evaluateJavaScript("({count:document.querySelectorAll('.mermaid-diagram svg').length,errors:document.querySelectorAll('.mermaid-error').length,safe:window.untrusted !== true})") as? [String: Any]
-            try check((diagrams?["count"] as? Int) == 2, "Mermaid 离线渲染流程图及序列图")
-            try check((diagrams?["errors"] as? Int) == 1, "Mermaid 语法错误保留源码且不影响其他图表")
-            try check((diagrams?["safe"] as? Bool) == true, "启用 Mermaid 后文稿脚本仍不可执行")
-            try await screenshot(controller, to: directory.appendingPathComponent("mermaid.png"))
+
             document.text = welcomeMarkdown
             controller.reloadDocument()
             try await waitForPreview(controller)
@@ -249,7 +243,7 @@ import MarknoteCore
         controller.showPreview()
         try check(blankController.isEditorVisible && blankController.isPreviewVisible, "各窗口独立保存编辑和预览的显示状态")
         try chooseLanguage(.english)
-        try check(NSApp.mainMenu?.items.contains(where: { $0.title == "File" }) == true && controller.window?.subtitle == "A little space to think", "语言菜单切换后主菜单与当前窗口立即变为英文")
+        try check(NSApp.mainMenu?.items.contains(where: { $0.title == "File" }) == true && controller.window?.subtitle == "", "语言菜单切换后主菜单与当前窗口立即变为英文")
         try check(try modeGroup(in: blankController).label(forSegment: 0) == "Editor Only" && group.label(forSegment: 1) == "Split" && group.label(forSegment: 2) == "Preview Only", "所有已打开窗口的模式按钮组同时切换语言")
         try check(blank.displayName.hasPrefix("Untitled") && labels(blankController.window!.contentView!).contains("Outline"), "未命名文稿标题和侧栏跟随界面语言")
         try check(labels(controller.window!.contentView!).contains(where: { $0.hasPrefix("Words: ") }) && labels(controller.window!.contentView!).contains(where: { $0.hasPrefix("Line ") }), "字数统计和光标位置使用英文格式")
@@ -258,7 +252,12 @@ import MarknoteCore
         let empty = try await blankController.preview.evaluateJavaScript("({language:document.documentElement.lang,text:document.body.innerText})") as? [String: String]
         try check(empty?["language"] == "en" && empty?["text"]?.contains("It starts with a word.") == true, "空白预览和 HTML 语言属性即时切换为英文")
         try check(welcomeMarkdown.contains("# A little space to think."), "帮助文稿使用当前界面语言")
-        try check(controller.editor === editor && editor.string == originalText && document.text == originalText && editor.selectedRange() == originalSelection && document.fileURL == originalURL && document.isDocumentEdited == originalEdited && editor.undoManager?.undoActionName == originalUndo, "语言及区域切换保留编辑器、文稿、选区、保存状态和撤销记录")
+        try check(controller.editor === editor, "语言切换保留编辑器实例")
+        try check(editor.string == originalText && document.text == originalText, "语言切换保留文稿正文")
+        try check(editor.selectedRange() == originalSelection, "语言切换保留选区")
+        try check(document.fileURL == originalURL, "语言切换保留文件路径")
+        try check(document.isDocumentEdited == originalEdited, "语言切换保留修改状态")
+        try check(editor.undoManager?.undoActionName == originalUndo, "语言切换保留撤销记录")
         controller.showSplit()
         editor.undoManager?.undo()
         try check(document.text != originalText, "切换后原有编辑仍可撤销")
@@ -519,6 +518,54 @@ import MarknoteCore
         let opened = documentController.documents.first(where: { $0.fileURL == sibling }) as? MarkdownDocument
         try check(opened?.text == "# Nearby note" && document.text == beforePalette, "快速打开载入所选文件并保留原文稿")
         opened?.close()
+    }
+
+    private static func verifyDiagrams(in directory: URL, check: (Bool, String) throws -> Void) async throws {
+        let document = try documentController.makeUntitledDocument(ofType: MarkdownDocument.typeName) as! MarkdownDocument
+        documentController.addDocument(document)
+        document.makeWindowControllers()
+        document.showWindows()
+        let controller = document.windowControllers.first as! EditorWindowController
+        defer { document.close() }
+        document.text = "```mermaid\ngraph TD\n A[Start] --> B[Done]\n```\n\n```mermaid\nnot a diagram\n```\n\n```mermaid\nsequenceDiagram\n Alice->>Bob: Hello\n```\n\n<script>window.untrusted = true</script>"
+        controller.reloadDocument()
+        try await waitForPreview(controller)
+        let diagrams = try await controller.preview.evaluateJavaScript("({count:document.querySelectorAll('.mermaid-diagram svg').length,errors:document.querySelectorAll('.mermaid-error').length,safe:window.untrusted !== true})") as? [String: Any]
+        try check((diagrams?["count"] as? Int) == 2, "Mermaid 离线渲染流程图及序列图")
+        try check((diagrams?["errors"] as? Int) == 1, "Mermaid 语法错误保留源码且不影响其他图表")
+        try check((diagrams?["safe"] as? Bool) == true, "启用 Mermaid 后文稿脚本仍不可执行")
+        let zoom = try await controller.preview.callAsyncJavaScript("""
+            const original = document.querySelector('.mermaid-diagram svg');
+            const style = original.getAttribute('style');
+            document.querySelector('.diagram-open').click();
+            const dialog = document.querySelector('.diagram-viewer');
+            const stage = dialog.querySelector('.diagram-stage');
+            const opened = dialog.open && stage.contains(original);
+            const fit = dialog.querySelector('output').textContent;
+            dialog.querySelectorAll('button')[1].click();
+            const enlarged = parseInt(dialog.querySelector('output').textContent) > parseInt(fit);
+            stage.dispatchEvent(new WheelEvent('wheel', {deltaY:-80, clientX:100, clientY:100, cancelable:true}));
+            const wheel = parseInt(dialog.querySelector('output').textContent) > parseInt(fit);
+            dialog.dispatchEvent(new KeyboardEvent('keydown', {key:'0'}));
+            const reset = dialog.querySelector('output').textContent === fit;
+            dialog.querySelectorAll('button')[3].click();
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const restored = !document.querySelector('.diagram-viewer') &&
+                document.querySelector('.mermaid-diagram svg') === original && original.getAttribute('style') === style;
+            document.querySelectorAll('.diagram-open')[1].click();
+            const second = document.querySelector('.diagram-viewer');
+            const independent = second.open && second.querySelector('svg') !== original;
+            second.close();
+            await new Promise(resolve => setTimeout(resolve, 100));
+            return {opened, enlarged, wheel, reset, restored, independent};
+            """, arguments: [:], in: nil, contentWorld: .page) as? [String: Bool]
+        for name in ["opened", "enlarged", "wheel", "reset", "restored", "independent"] {
+            try check(zoom?[name] == true, "Mermaid 放大查看：" + name)
+        }
+        try await screenshot(controller, to: directory.appendingPathComponent("mermaid.png"))
+        _ = try await controller.preview.evaluateJavaScript("document.querySelector('.diagram-open').click()")
+        try await Task.sleep(nanoseconds: 150_000_000)
+        try await screenshot(controller, to: directory.appendingPathComponent("mermaid-zoom.png"))
     }
 
     private static func settleEditing(_ editor: NSTextView, document: MarkdownDocument) async throws {
