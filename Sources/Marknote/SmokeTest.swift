@@ -31,6 +31,7 @@ import MarknoteCore
             L10n.shared.select(.simplifiedChinese)
             UserDefaults.standard.set(false, forKey: "paragraphFocus")
             UserDefaults.standard.set(false, forKey: "typewriterScrolling")
+            try await verifyFrontMatter(in: directory) { try check($0, $1) }
             try await verifyDiagrams(in: directory) { try check($0, $1) }
             let markdownTypes = MarkdownFileAssociation.contentTypes
             try check(!markdownTypes.isEmpty && markdownTypes.allSatisfy { !["public.plain-text", "public.text", "public.data"].contains($0.identifier) }, "默认打开方式只针对 Markdown 类型")
@@ -518,6 +519,53 @@ import MarknoteCore
         let opened = documentController.documents.first(where: { $0.fileURL == sibling }) as? MarkdownDocument
         try check(opened?.text == "# Nearby note" && document.text == beforePalette, "快速打开载入所选文件并保留原文稿")
         opened?.close()
+    }
+
+    private static func verifyFrontMatter(in directory: URL, check: (Bool, String) throws -> Void) async throws {
+        let metadata = """
+        ---
+        doc_id: DOC-0005
+        title: Document Metadata, Preview Layout and Export Settings
+        type: spec
+        audience: internal
+        status: proposed
+        owner: Example Author
+        approvals: reviewers=pending, editors=pending
+        decision_owner: Example Author
+        version: 0.2
+        related: [DOC-001, DOC-002, DOC-003, DOC-004, DOC-005, DOC-006, DOC-007, DOC-008, DOC-009]
+        controls: []
+        ---
+        """
+        let document = try documentController.makeUntitledDocument(ofType: MarkdownDocument.typeName) as! MarkdownDocument
+        document.text = metadata + "\n\n# DOC-0005 — Document Metadata, Preview Layout and Export Settings\n\n## Status\n\nProposed."
+        documentController.addDocument(document)
+        document.makeWindowControllers()
+        document.showWindows()
+        let controller = document.windowControllers.first as! EditorWindowController
+        let originalFrame = controller.window?.frame
+        defer {
+            if let originalFrame { controller.window?.setFrame(originalFrame, display: true) }
+            document.close()
+        }
+        controller.window?.setContentSize(NSSize(width: 1400, height: 1000))
+        controller.showSplit()
+        try await waitForPreview(controller)
+        let result = try await controller.preview.evaluateJavaScript("""
+            (() => {
+                const block = document.querySelector('.frontmatter');
+                const code = block?.querySelector('code');
+                return {text: code?.textContent, whitespace: code && getComputedStyle(code).whiteSpace,
+                    fits: block && block.scrollWidth <= block.clientWidth,
+                    headings: Array.from(document.querySelectorAll('h1,h2'), h => h.textContent)};
+            })()
+            """) as? [String: Any]
+        try check(result?["text"] as? String == metadata + "\n", "YAML 元数据在预览中逐行保留原文")
+        try check(result?["whitespace"] as? String == "pre-wrap", "YAML 元数据保留换行和缩进，长行自动折行")
+        try check(result?["fits"] as? Bool == true, "长元数据字段不横向溢出预览")
+        try check((result?["headings"] as? [String]) == MarkdownText.headings(in: document.text).map(\.title), "元数据不生成标题，预览与目录一致")
+        try await screenshot(controller, to: directory.appendingPathComponent("frontmatter.png"))
+        try controller.renderer.page(document.text).write(to: directory.appendingPathComponent("frontmatter.html"), atomically: true, encoding: .utf8)
     }
 
     private static func verifyDiagrams(in directory: URL, check: (Bool, String) throws -> Void) async throws {

@@ -50,13 +50,24 @@ public final class MarkdownRenderer {
 
     public func body(_ markdown: String, relativeTo directory: URL? = nil) -> String {
         baseDirectory = directory
+        var content = markdown
+        var metadataHTML = ""
+        if let range = MarkdownText.frontMatterRange(in: markdown) {
+            let source = markdown as NSString
+            var metadata = source.substring(with: range)
+            if metadata.hasPrefix("\u{FEFF}") { metadata.removeFirst() }
+            // YAML is literal text, not Markdown: preserve lines and indentation
+            // and prevent its closing delimiter from becoming a Setext heading.
+            metadataHTML = "<pre class=\"frontmatter\"><code>" + Self.escape(metadata) + "</code></pre>\n"
+            content = source.substring(from: NSMaxRange(range))
+        }
         context.exception = nil
         context.setObject(L10n.text(.imageUnavailable), forKeyedSubscript: "imageUnavailable" as NSString)
-        let result = context.objectForKeyedSubscript("renderMarkdown")?.call(withArguments: [markdown])
+        let result = context.objectForKeyedSubscript("renderMarkdown")?.call(withArguments: [content])
         guard context.exception == nil, let output = result?.toString() else {
             return "<pre>" + Self.escape(markdown) + "</pre>"
         }
-        return output
+        return metadataHTML + output
     }
 
     public func page(_ markdown: String, title: String? = nil, relativeTo directory: URL? = nil, dark: Bool? = nil) -> String {
@@ -139,6 +150,7 @@ public final class MarkdownRenderer {
     ul,ol{padding-left:25px}li{padding-left:4px;margin:5px 0}li>ul,li>ol{margin:4px 0}li:has(>input[type=checkbox]){list-style:none;margin-left:-22px}
     input[type=checkbox]{accent-color:var(--accent);margin-right:8px}code{font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft);padding:3px 6px;border-radius:4px}
     pre{padding:20px 22px;overflow:auto;background:var(--soft);border:1px solid var(--line);border-radius:8px;line-height:1.7}pre code{padding:0;background:none;white-space:pre}
+    .frontmatter code{white-space:pre-wrap;overflow-wrap:anywhere}
     table{width:100%;border-collapse:collapse;margin:24px 0;font-size:14px;display:block;overflow:auto}th,td{border:1px solid var(--line);padding:9px 15px;text-align:left}th{background:var(--soft);font-weight:600}
     img{max-width:100%;height:auto;border-radius:6px}hr{border:0;border-top:1px solid var(--line);margin:32px 0}del{color:var(--muted)}.image-placeholder{color:var(--muted);font-size:14px}
     .mermaid-diagram{overflow:auto;text-align:center;margin:24px 0}.mermaid-diagram svg{max-width:100%;height:auto}.mermaid-error{border-color:#b66}

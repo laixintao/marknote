@@ -31,6 +31,81 @@ final class MarkdownTests {
         expect(html.contains("<h1"))
     }
 
+    func testFrontMatterPreservesLinesAndBody() {
+        let metadata = """
+        ---
+        doc_id: DOC-0005
+        title: Document Metadata, Preview Layout and Export Settings
+        type: spec
+        audience: internal
+        status: proposed
+        owner: Example Author
+        approvals: reviewers=pending, editors=pending
+        decision_owner: Example Author
+        version: 0.2
+        related: [DOC-001, DOC-002, DOC-003, DOC-004, DOC-005, DOC-006, DOC-007, DOC-008, DOC-009]
+        controls: []
+        ---
+        """
+        let source = metadata + "\n\n# DOC-0005\n\n## Status\n\n**Proposed**"
+        let renderer = MarkdownRenderer()
+        let html = renderer.body(source)
+        expect(html.contains("<pre class=\"frontmatter\"><code>" + metadata))
+        expect(html.contains("</code></pre>\n<h1 id=\"doc-0005\">DOC-0005</h1>"))
+        expect(html.contains("<h2 id=\"status\">Status</h2>"))
+        expect(html.contains("<strong>Proposed</strong>"))
+        expectFalse(html.contains("<hr>"))
+        expectEqual(html.components(separatedBy: "<h2").count - 1, 1)
+        expect(renderer.page(source).contains(html))
+        expectEqual(MarkdownText.headings(in: source).map(\.title), ["DOC-0005", "Status"])
+    }
+
+    func testFrontMatterIsLiteralAndExcludedFromOutline() {
+        let source = "---\n# YAML comment 🌱\ntitle: '**literal**'\nsummary: |\n  # Not a heading\n  <script>alert(1)</script> & text\n\ntags:\n  - first\n  - second\n---\n# 正文 🌱\n\nSection\n---"
+        let html = MarkdownRenderer().body(source)
+        expect(html.contains("title: '**literal**'"))
+        expect(html.contains("summary: |\n  # Not a heading\n  &lt;script&gt;alert(1)&lt;/script&gt; &amp; text"))
+        expect(html.contains("\ntags:\n  - first\n  - second\n"))
+        expectFalse(html.contains("<script>"))
+        expectFalse(html.contains("<strong>"))
+        expectFalse(html.contains("<ul>"))
+        let headings = MarkdownText.headings(in: source)
+        expectEqual(headings.map(\.title), ["正文 🌱", "Section"])
+        expectEqual(headings.map(\.level), [1, 2])
+        expectEqual(headings.first?.range, (source as NSString).range(of: "# 正文 🌱\n"))
+    }
+
+    func testFrontMatterDelimitersAndLineEndings() {
+        let renderer = MarkdownRenderer()
+        for newline in ["\n", "\r\n", "\r"] {
+            for closing in ["---", "..."] {
+                for prefix in ["", "\u{FEFF}"] {
+                    let metadata = "--- \t" + newline + "title: 中文 🌱" + newline + closing + "\t "
+                    let source = prefix + metadata + newline + "# Body"
+                    let html = renderer.body(source)
+                    expect(html.contains("<pre class=\"frontmatter\"><code>" + metadata))
+                    expect(html.contains("<h1 id=\"body\">Body</h1>"))
+                    let headings = MarkdownText.headings(in: source)
+                    expectEqual(headings.map(\.title), ["Body"])
+                    expectEqual(headings.first?.range, (source as NSString).range(of: "# Body"))
+                    expect(renderer.body(prefix + metadata).contains("</code></pre>"))
+                }
+            }
+        }
+        expect(renderer.body("---\n---").contains("class=\"frontmatter\""))
+    }
+
+    func testFrontMatterDoesNotChangeOrdinaryMarkdown() {
+        let renderer = MarkdownRenderer()
+        for source in ["---", "---\ntitle: unfinished\n# Body", "Intro\n\n---\ntitle: middle\n---", "```yaml\n---\ntitle: example\n---\n```", "> ---\n> title: quote\n> ---", "    ---\n    title: code\n    ---", "----\ntitle: ordinary\n----"] {
+            expectFalse(renderer.body(source).contains("class=\"frontmatter\""))
+        }
+        expect(renderer.body("Title\n---").contains("<h2 id=\"title\">Title</h2>"))
+        expectEqual(renderer.body("Before\n\n---\n\nAfter"), "<p>Before</p>\n<hr>\n<p>After</p>\n")
+        expectEqual(renderer.body("first\nsecond"), "<p>first\nsecond</p>\n")
+        expectEqual(renderer.body("first  \nsecond"), "<p>first<br>second</p>\n")
+    }
+
     func testImagesStayWithinDocumentDirectory() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

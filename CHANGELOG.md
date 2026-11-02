@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-11-02
+
+- Preserve YAML front matter line breaks and indentation in previews and exports, wrap long metadata fields, and prevent the closing delimiter from turning metadata into a heading. / 修复预览及导出中的 YAML 元数据换行和缩进，长字段自动折行，避免结束分隔符将元数据误识别为标题。
+- Exclude front matter from the document outline while preserving heading navigation positions. / 文档大纲排除元数据中的伪标题，并保持正文标题跳转位置准确。
+
 ## [1.2.3] - 2026-10-20
 
 - Add an offline Mermaid diagram viewer with zoom, pan, fit, and keyboard controls. / 新增 Mermaid 图表放大查看，支持缩放、平移、适应窗口和键盘操作。

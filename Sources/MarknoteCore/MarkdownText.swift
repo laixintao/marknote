@@ -19,10 +19,34 @@ public struct TextEdit: Equatable {
 }
 
 public enum MarkdownText {
+    // Recognize only a complete YAML header at the start of the document. Keep
+    // its original UTF-16 range so preview and outline agree without shifting headings.
+    static func frontMatterRange(in text: String) -> NSRange? {
+        let source = text as NSString
+        guard source.length > 0 else { return nil }
+        func isDelimiter(_ line: String, _ marker: String) -> Bool {
+            line.hasPrefix(marker) && line.dropFirst(marker.count).allSatisfy { $0 == " " || $0 == "\t" }
+        }
+        let firstRange = source.lineRange(for: NSRange(location: 0, length: 0))
+        var first = source.substring(with: firstRange).trimmingCharacters(in: .newlines)
+        if first.hasPrefix("\u{FEFF}") { first.removeFirst() }
+        guard isDelimiter(first, "---") else { return nil }
+        var offset = NSMaxRange(firstRange)
+        while offset < source.length {
+            let range = source.lineRange(for: NSRange(location: offset, length: 0))
+            let line = source.substring(with: range).trimmingCharacters(in: .newlines)
+            if isDelimiter(line, "---") || isDelimiter(line, "...") {
+                return NSRange(location: 0, length: NSMaxRange(range))
+            }
+            offset = NSMaxRange(range)
+        }
+        return nil
+    }
+
     public static func headings(in text: String) -> [Heading] {
         let source = text as NSString
         var result: [Heading] = []
-        var offset = 0
+        var offset = frontMatterRange(in: text).map { NSMaxRange($0) } ?? 0
         var fence: (Character, Int)?
         var previous: (String, NSRange)?
         while offset < source.length {
