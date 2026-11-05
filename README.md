@@ -14,9 +14,10 @@ Built with Swift, AppKit, and WebKit. Your files stay on your Mac. No account, E
 
 - **Native editing** with syntax highlighting, find and replace, undo / redo, Chinese input, and adjustable type size.
 - **Keyboard-first navigation** with a searchable command palette and quick open for open, recent, and nearby Markdown files.
+- **Project browsing** with an expandable directory tree and native tabs for Markdown, MDX, and text files. Open a folder with `⌥⌘O` and a new tab with `⌘T`.
 - **Fewer editing steps** with image paste / drop, relative image assets, URL paste over selected text, and table formatting with Tab navigation.
 - **Comfortable long-form writing** with optional paragraph focus and typewriter scrolling.
-- **Your choice of layout** with an Editor Only / Split / Preview Only button group, a resizable outline, and focus mode.
+- **Your choice of layout** with an Editor Only / Split / Preview Only button group, a resizable sidebar, and focus mode.
 - **A clear document structure** with a clickable outline, word and character counts, and cursor position.
 - **Everyday Markdown** including code blocks, quotes, images, tables, task lists, and strikethrough.
 - **Files you own** with UTF-8 documents, multiple windows, autosave, HTML export, and PDF export.

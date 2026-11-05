@@ -92,7 +92,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 
         let file = menu(L10n.text(.menuFile))
         add(file, L10n.text(.newDocument), #selector(NSDocumentController.newDocument(_:)), "n", target: documentController)
+        add(file, L10n.text(.newTab), #selector(newTab(_:)), "t", target: self)
         add(file, L10n.text(.open), #selector(NSDocumentController.openDocument(_:)), "o", target: documentController)
+        add(file, L10n.text(.openFolder), #selector(openFolder(_:)), "o", [.command, .option], target: self)
         add(file, L10n.text(.quickOpen), #selector(EditorWindowController.showQuickOpen), "o", [.command, .shift])
         let recent = NSMenuItem(title: L10n.text(.openRecent), action: nil, keyEquivalent: "")
         recent.submenu = NSMenu(title: L10n.text(.openRecent))
@@ -139,7 +141,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         add(view, L10n.text(.editorToggle), #selector(EditorWindowController.toggleEditorPane), "e", [.command, .option])
         add(view, L10n.text(.previewToggle), #selector(EditorWindowController.togglePreviewPane), "p", [.command, .option])
         view.addItem(.separator())
-        add(view, L10n.text(.outline), #selector(EditorWindowController.toggleSidebar), "0", [.command, .option])
+        add(view, L10n.text(.sidebar), #selector(EditorWindowController.toggleSidebar), "0", [.command, .option])
         add(view, L10n.text(.editorOnly), #selector(EditorWindowController.showEditor), "1", [.command, .control])
         add(view, L10n.text(.splitView), #selector(EditorWindowController.showSplit), "2", [.command, .control])
         add(view, L10n.text(.previewOnly), #selector(EditorWindowController.showPreview), "3", [.command, .control])
@@ -154,6 +156,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 
         let window = menu(L10n.text(.menuWindow))
         NSApp.windowsMenu = window
+        add(window, L10n.text(.nextTab), #selector(NSWindow.selectNextTab(_:)), "]", [.command, .shift])
+        add(window, L10n.text(.previousTab), #selector(NSWindow.selectPreviousTab(_:)), "[", [.command, .shift])
+        window.addItem(.separator())
         add(window, L10n.text(.minimize), #selector(NSWindow.performMiniaturize(_:)), "m")
         add(window, L10n.text(.zoom), #selector(NSWindow.performZoom(_:)))
         add(window, L10n.text(.bringAllToFront), #selector(NSApplication.arrangeInFront(_:)))
@@ -165,6 +170,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
     @objc func changeLanguage(_ sender: NSMenuItem) {
         guard let value = sender.representedObject as? String, let language = AppLanguage(rawValue: value) else { return }
         L10n.shared.select(language)
+    }
+
+    @objc private func newTab(_ sender: Any?) {
+        if let controller = NSApp.mainWindow?.windowController as? EditorWindowController { controller.newDocumentTab(sender) }
+        else { documentController.newDocument(sender) }
+    }
+
+    @objc private func openFolder(_ sender: Any?) {
+        if let controller = NSApp.mainWindow?.windowController as? EditorWindowController { controller.openFolder(sender) }
+        else {
+            let panel = NSOpenPanel()
+            panel.canChooseDirectories = true
+            panel.canChooseFiles = false
+            panel.allowsMultipleSelection = false
+            panel.prompt = L10n.text(.openFolder)
+            panel.begin { result in
+                guard result == .OK, let url = panel.url else { return }
+                Task { @MainActor in
+                    do {
+                        let document = try documentController.makeUntitledDocument(ofType: MarkdownDocument.typeName) as! MarkdownDocument
+                        documentController.addDocument(document)
+                        document.makeWindowControllers()
+                        document.showWindows()
+                        (document.windowControllers.first as? EditorWindowController)?.setWorkspace(DirectoryWorkspace(rootURL: url))
+                    } catch { NSApp.presentError(error) }
+                }
+            }
+        }
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {

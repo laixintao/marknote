@@ -74,6 +74,8 @@ extension EditorWindowController {
         }
         command("quick-open", .quickOpen, .menuFile, "open file switch 打开 文件 切换", "⇧⌘O") { $0.showQuickOpen() }
         command("new", .newDocument, .menuFile, "new document 新建 文稿", "⌘N") { _ in documentController.newDocument(nil) }
+        command("new-tab", .newTab, .menuFile, "new tab 新建 标签页", "⌘T") { $0.newDocumentTab(nil) }
+        command("open-folder", .openFolder, .menuFile, "open folder directory tree project 文件夹 目录树 项目", "⌥⌘O") { $0.openFolder(nil) }
         command("save", .save, .menuFile, "save 保存", "⌘S") { $0.documentModel.save(nil) }
         command("find", .find, .menuEdit, "find search replace 查找 搜索 替换", "⌘F") { $0.findInDocument(nil) }
         command("edit", .editorOnly, .menuView, "editor only 编辑 模式", "⌃⌘1") { $0.showEditor() }
@@ -82,7 +84,7 @@ extension EditorWindowController {
         command("focus", .focus, .menuView, "focus 专注", "⇧⌘F") { $0.toggleFocus() }
         command("paragraph", .paragraphFocus, .menuView, "paragraph focus 段落 聚焦") { $0.toggleParagraphFocus() }
         command("typewriter", .typewriterScrolling, .menuView, "typewriter scrolling 打字机 滚动") { $0.toggleTypewriterScrolling() }
-        command("outline", .outline, .menuView, "outline toc sidebar 目录 大纲 侧栏", "⌥⌘0") { $0.toggleSidebar() }
+        command("outline", .sidebar, .menuView, "outline toc sidebar 目录 大纲 侧栏", "⌥⌘0") { $0.toggleSidebar() }
         command("image", .insertImage, .menuFormat, "image picture screenshot 图片 截图", "⇧⌘I") { $0.insertImage() }
         command("table", .table, .menuFormat, "insert table 表格 插入") { $0.insertTable() }
         if MarkdownTable.format(editor.string, selection: editor.selectedRange()) != nil {
@@ -118,8 +120,9 @@ extension EditorWindowController {
             let path = url.standardizedFileURL.path
             guard seen.insert(path).inserted, FileManager.default.fileExists(atPath: path) else { return }
             entries.append(.init(id: path, title: url.lastPathComponent, detail: L10n.text(group) + " · " + url.deletingLastPathComponent().path, keywords: "", shortcut: "", perform: { [weak self] in
-                documentController.openDocument(withContentsOf: url, display: true) { _, _, error in
-                    if let error { self?.documentModel.presentError(error) }
+                Task { @MainActor in
+                    do { _ = try await self?.openFileInTab(url) }
+                    catch { self?.documentModel.presentError(error) }
                 }
             }))
         }

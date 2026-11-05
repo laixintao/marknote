@@ -20,6 +20,15 @@
 "menuFile" = "File";
 "newDocument" = "New";
 "open" = "Open…";
+"openFolder" = "Open Folder…";
+"newTab" = "New Tab";
+"sidebar" = "Sidebar";
+"files" = "Files";
+"folderHint" = "Open a folder to browse your documents.";
+"folderEmpty" = "No Markdown or text files in this folder.";
+"refreshFiles" = "Refresh Files";
+"nextTab" = "Next Tab";
+"previousTab" = "Previous Tab";
 "openRecent" = "Open Recent";
 "close" = "Close";
 "save" = "Save…";
@@ -78,7 +87,7 @@
 "previewToggleHelp" = "Show or hide the preview (one pane stays visible)";
 "insert" = "Insert";
 "export" = "Export";
-"sidebarHelp" = "Show / Hide Outline";
+"sidebarHelp" = "Show / Hide Sidebar";
 "boldHelp" = "Bold ⌘B";
 "italicHelp" = "Italic ⌘I";
 "linkHelp" = "Insert Link ⌘K";

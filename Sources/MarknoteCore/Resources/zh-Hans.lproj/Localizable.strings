@@ -20,6 +20,15 @@
 "menuFile" = "文件";
 "newDocument" = "新建";
 "open" = "打开…";
+"openFolder" = "打开文件夹…";
+"newTab" = "新建标签页";
+"sidebar" = "侧栏";
+"files" = "文件";
+"folderHint" = "打开文件夹，浏览其中的文稿。";
+"folderEmpty" = "此文件夹中没有 Markdown 或文本文件。";
+"refreshFiles" = "刷新文件列表";
+"nextTab" = "下一个标签页";
+"previousTab" = "上一个标签页";
 "openRecent" = "打开最近使用";
 "close" = "关闭";
 "save" = "保存…";
@@ -78,7 +87,7 @@
 "previewToggleHelp" = "显示或隐藏预览区（至少保留一个区域）";
 "insert" = "插入";
 "export" = "导出";
-"sidebarHelp" = "显示 / 隐藏大纲";
+"sidebarHelp" = "显示 / 隐藏侧栏";
 "boldHelp" = "加粗 ⌘B";
 "italicHelp" = "斜体 ⌘I";
 "linkHelp" = "插入链接 ⌘K";

@@ -70,7 +70,7 @@ The existing `make version` command remains available for development, but is no
 | `make verify` | Run all the checks and tests above |
 | `make package` | Versioned DMG + ZIP with `.sha256` files in `dist/releases/` for this Mac |
 | `make installer` | Build the DMG (also produces the companion ZIP); mount and verify the app, version, architecture, and Applications shortcut |
-| `make screenshots` | Six real window captures at `docs/images/product-*.png` |
+| `make screenshots` | Seven real window captures at `docs/images/product-*.png` |
 
 Screenshots and window tests require a logged-in macOS graphical session. Separate bundle identifiers isolate preferences from the regular app. Screenshot originals and logs live in `.build/screenshots-*/`; native test results live in `.build/smoke-*/`.
 

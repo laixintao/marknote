@@ -10,6 +10,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     let documentModel: MarkdownDocument
     var activePalette: CommandPalette?
     var pendingImageInsertion: ([ImageAttachment], NSRange)?
+    let directoryTree = DirectoryTreeView()
     private let rootSplit = NSSplitView()
     private let contentSplit = NSSplitView()
     private let sidebar = NSVisualEffectView()
@@ -27,7 +28,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
     private var mode = 1
     private var previousMode = 1
     private var previousSidebar = true
-    private var sidebarWidth: CGFloat = 205
+    private var sidebarWidth: CGFloat = 250
     private var focused = false
     private var previewScroll: Double = 0
     private var previewRevision = 0
@@ -52,7 +53,17 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         window.isReleasedWhenClosed = false
         super.init(window: window)
         window.setFrameAutosaveName("MarknoteEditor")
+        window.tabbingIdentifier = "MarknoteDocuments"
         buildWindow()
+        directoryTree.onOpenFolder = { [weak self] in self?.openFolder(nil) }
+        directoryTree.onOpenFile = { [weak self] url in
+            Task { @MainActor in
+                do { _ = try await self?.openFileInTab(url) }
+                catch { self?.documentModel.presentError(error) }
+            }
+        }
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshDirectoryTree), name: NSWindow.didBecomeKeyNotification, object: window)
+        updateDirectoryTree()
         buildToolbar()
         reloadDocument()
         updatePosition()
@@ -74,6 +85,7 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         outline.setAccessibilityLabel(L10n.text(.outline))
         editor.setAccessibilityLabel(L10n.text(.editorAccessibility))
         preview.setAccessibilityLabel(L10n.text(.previewAccessibility))
+        directoryTree.applyLocalization()
         buildToolbar()
         updateMetadata()
         updatePosition()
@@ -135,7 +147,6 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         logo.contentTintColor = .systemTeal
         let brand = NSStackView(views: [logo, PaddedLabel(.appName, size: 19, weight: .semibold, color: .labelColor), NSView()])
         brand.spacing = 9
-        let subtitle = PaddedLabel("M A R K N O T E", size: 9, weight: .medium, color: .tertiaryLabelColor)
         let title = NSStackView(views: [PaddedLabel(.outline, size: 11, weight: .semibold), NSView(), outlineCount])
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("heading"))
         outline.addTableColumn(column)
@@ -154,12 +165,13 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
         scroll.hasVerticalScroller = true
         scroll.drawsBackground = false
         let hint = PaddedLabel(.focusHint, size: 10, color: .tertiaryLabelColor)
-        for view in [brand, subtitle, title, scroll, outlineEmpty, hint] { sidebar.addSubview(view); view.translatesAutoresizingMaskIntoConstraints = false }
+        for view in [brand, directoryTree, title, scroll, outlineEmpty, hint] { sidebar.addSubview(view); view.translatesAutoresizingMaskIntoConstraints = false }
         NSLayoutConstraint.activate([
             brand.topAnchor.constraint(equalTo: sidebar.topAnchor, constant: 27), brand.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 22), brand.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -16),
             logo.widthAnchor.constraint(equalToConstant: 24), logo.heightAnchor.constraint(equalToConstant: 26),
-            subtitle.topAnchor.constraint(equalTo: brand.bottomAnchor, constant: 7), subtitle.leadingAnchor.constraint(equalTo: brand.leadingAnchor),
-            title.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 36), title.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 20), title.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -20),
+            directoryTree.topAnchor.constraint(equalTo: brand.bottomAnchor, constant: 22), directoryTree.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 10), directoryTree.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -10),
+            directoryTree.heightAnchor.constraint(equalTo: sidebar.heightAnchor, multiplier: 0.46, constant: -24),
+            title.topAnchor.constraint(equalTo: directoryTree.bottomAnchor, constant: 18), title.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 20), title.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -20),
             scroll.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 12), scroll.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 10), scroll.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -10), scroll.bottomAnchor.constraint(equalTo: hint.topAnchor, constant: -20),
             outlineEmpty.topAnchor.constraint(equalTo: scroll.topAnchor, constant: 10), outlineEmpty.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 18), outlineEmpty.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
             hint.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -18), hint.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 20)
@@ -462,6 +474,10 @@ final class EditorWindowController: NSWindowController, NSTextViewDelegate, NSTe
 
     @objc func toggleSidebar() {
         setSidebarVisible(sidebar.isHidden)
+    }
+    func revealSidebar() {
+        if focused { toggleFocus() }
+        setSidebarVisible(true)
     }
     @objc func toggleEditorPane() {
         setMode(isEditorVisible ? 2 : 1)

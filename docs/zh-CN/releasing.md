@@ -70,7 +70,7 @@ make release
 | `make verify` | 上述检查和测试全部执行 |
 | `make package` | 当前机器架构的 DMG、ZIP 和各自 `.sha256`，位于 `dist/releases/` |
 | `make installer` | 生成 DMG 和 ZIP；挂载检查应用签名、版本、架构及 Applications 快捷方式 |
-| `make screenshots` | 生成 `docs/images/product-*.png` 的六张真实截图 |
+| `make screenshots` | 生成 `docs/images/product-*.png` 的七张真实截图 |
 
 截图和窗口测试需要当前登录用户的 macOS 图形会话，使用独立应用标识，不改动正式应用偏好。原始截图和日志在 `.build/screenshots-*/`；窗口测试结果在 `.build/smoke-*/`。
 

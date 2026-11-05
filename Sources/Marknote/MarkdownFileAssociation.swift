@@ -2,9 +2,9 @@ import AppKit
 import UniformTypeIdentifiers
 
 @MainActor enum MarkdownFileAssociation {
-    static let extensions = ["md", "markdown", "mdown", "mkd"]
+    static let extensions = ["md", "markdown", "mdown", "mkd", "mdx"]
     static var contentTypes: [UTType] {
-        let known = ["net.daringfireball.markdown", "net.marknote.markdown"]
+        let known = ["net.daringfireball.markdown", "net.marknote.markdown", "net.marknote.mdx"]
         let candidates = known.compactMap(UTType.init) + extensions.compactMap { UTType(filenameExtension: $0) }
         var seen = Set<String>()
         return candidates.filter { type in
@@ -15,9 +15,11 @@ import UniformTypeIdentifiers
     }
 
     static var isDefault: Bool {
-        guard let type = UTType(filenameExtension: "md"),
-              let application = NSWorkspace.shared.urlForApplication(toOpen: type) else { return false }
-        return application.standardizedFileURL == Bundle.main.bundleURL.standardizedFileURL
+        extensions.allSatisfy { ext in
+            guard let type = UTType(filenameExtension: ext),
+                  let application = NSWorkspace.shared.urlForApplication(toOpen: type) else { return false }
+            return application.standardizedFileURL == Bundle.main.bundleURL.standardizedFileURL
+        }
     }
 
     typealias Setter = (URL, UTType) async throws -> Void

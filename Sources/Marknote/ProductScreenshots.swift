@@ -17,7 +17,9 @@ import MarknoteCore
             for language in [AppLanguage.simplifiedChinese, .english] {
                 L10n.shared.select(language)
                 let name = language == .english ? "Field Notes.md" : "写作手记.md"
-                let url = directory.appendingPathComponent(name)
+                let sampleFolder = directory.appendingPathComponent(language == .english ? "Field Notes" : "写作手记", isDirectory: true)
+                try FileManager.default.createDirectory(at: sampleFolder, withIntermediateDirectories: true)
+                let url = sampleFolder.appendingPathComponent(name)
                 try welcomeMarkdown.write(to: url, atomically: true, encoding: .utf8)
                 let document: MarkdownDocument = try await withCheckedThrowingContinuation { continuation in
                     documentController.openDocument(withContentsOf: url, display: true) { document, _, error in
@@ -78,7 +80,38 @@ import MarknoteCore
                 }
                 document.close()
             }
-            try "6 product screenshots captured from the native application.\n".write(to: directory.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
+            UserDefaults.standard.set(false, forKey: "paragraphFocus")
+            UserDefaults.standard.set(false, forKey: "typewriterScrolling")
+            let project = directory.appendingPathComponent("Field Notes", isDirectory: true)
+            let guides = project.appendingPathComponent("Guides", isDirectory: true)
+            try FileManager.default.createDirectory(at: guides, withIntermediateDirectories: true)
+            let home = project.appendingPathComponent("README.md")
+            let guide = guides.appendingPathComponent("Getting started.mdx")
+            try "# Field Notes\n\nA home for the team's ideas and working documents.\n".write(to: home, atomically: true, encoding: .utf8)
+            try "# Release checklist\n\n- [ ] Review the draft\n- [ ] Share with the team\n".write(to: project.appendingPathComponent("Release checklist.md"), atomically: true, encoding: .utf8)
+            try "# Getting started\n\nKeep the whole project within reach.\n\n## Explore your files\n\nExpand a folder in the sidebar, then choose a document to open it in a tab.\n\n## Pick up where you left off\n\nEach tab keeps its own edits, cursor position, and undo history. Switch between notes without losing your place.\n\n> Your documents stay ordinary files, ready to use anywhere.\n".write(to: guide, atomically: true, encoding: .utf8)
+            let document: MarkdownDocument = try await withCheckedThrowingContinuation { continuation in
+                documentController.openDocument(withContentsOf: home, display: true) { document, _, error in
+                    if let error { continuation.resume(throwing: error) }
+                    else if let document = document as? MarkdownDocument { continuation.resume(returning: document) }
+                    else { continuation.resume(throwing: SmokeTest.Failure(message: "Could not open workspace sample")) }
+                }
+            }
+            let first = document.windowControllers.first as! EditorWindowController
+            let active = try await first.openFileInTab(guide)
+            active.window?.setContentSize(NSSize(width: 1220, height: 800))
+            active.window?.appearance = NSAppearance(named: .aqua)
+            active.editor.setSelectedRange(NSRange(location: 0, length: 0))
+            active.editor.scrollRangeToVisible(NSRange(location: 0, length: 0))
+            NSApp.activate(ignoringOtherApps: true)
+            active.window?.makeKeyAndOrderFront(nil)
+            active.refreshPreview()
+            try await SmokeTest.waitForPreview(active)
+            try await SmokeTest.screenshot(active, to: directory.appendingPathComponent("product-workspace.png"))
+            print("Captured: product-workspace.png")
+            active.documentModel.close()
+            document.close()
+            try "7 product screenshots captured from the native application.\n".write(to: directory.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
             exit(0)
         } catch {
             fputs("Screenshot capture failed: \(error.localizedDescription)\n", stderr)

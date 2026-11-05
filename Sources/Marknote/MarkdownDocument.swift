@@ -17,7 +17,7 @@ final class MarkdownDocument: NSDocument {
     }
 
     override class var autosavesInPlace: Bool { true }
-    override var autosavingFileType: String? { Self.typeName }
+    override var autosavingFileType: String? { fileType ?? Self.typeName }
 
     override func makeWindowControllers() {
         guard windowControllers.isEmpty else { return }
@@ -49,6 +49,7 @@ final class MarkdownDocument: NSDocument {
                 DispatchQueue.main.async { [weak self] in
                     for controller in self?.windowControllers ?? [] {
                         (controller as? EditorWindowController)?.refreshPreview()
+                        (controller as? EditorWindowController)?.updateDirectoryTree()
                     }
                 }
             }

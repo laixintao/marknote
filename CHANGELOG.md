@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-11-05
+
+- Browse project folders in an expandable sidebar directory tree and open Markdown, MDX, and text documents in native tabs. Tabs retain independent edits, selections, undo history, and save prompts. / 新增侧栏项目目录树，支持在原生标签页中打开 Markdown、MDX 和文本文件，各文稿保留独立修改、选区、撤销记录及保存提示。
+- Add Open Folder (`⌥⌘O`), New Tab (`⌘T`), and tab switching shortcuts; share the project folder and expanded directories across tabs. / 新增打开文件夹（`⌥⌘O`）、新建标签页（`⌘T`）及标签切换快捷键，同组标签页共享项目目录及展开状态。
+- Register `.mdx` files for the default Markdown editor command and preserve their original file type during save and autosave. / 默认 Markdown 编辑器设置支持 `.mdx`，保存及自动保存保留原文件类型。
+- Remove the repeated sidebar wordmark and fix Chinese resource loading with newer Swift build tools. / 移除侧栏重复的品牌文字，修复新版 Swift 构建工具下的中文资源加载。
+
 ## [1.2.4] - 2026-11-02
 
 - Preserve YAML front matter line breaks and indentation in previews and exports, wrap long metadata fields, and prevent the closing delimiter from turning metadata into a heading. / 修复预览及导出中的 YAML 元数据换行和缩进，长字段自动折行，避免结束分隔符将元数据误识别为标题。

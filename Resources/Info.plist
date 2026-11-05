@@ -50,6 +50,7 @@
 			<array>
 				<string>net.daringfireball.markdown</string>
 				<string>net.marknote.markdown</string>
+				<string>net.marknote.mdx</string>
 			</array>
 			<key>NSDocumentClass</key>
 			<string>MarkdownDocument</string>
@@ -91,6 +92,27 @@
 				</array>
 				<key>public.mime-type</key>
 				<string>text/markdown</string>
+			</dict>
+		</dict>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.marknote.mdx</string>
+			<key>UTTypeDescription</key>
+			<string>MDX Document</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>net.daringfireball.markdown</string>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>mdx</string>
+				</array>
 			</dict>
 		</dict>
 	</array>

@@ -1,6 +1,7 @@
 import AppKit
 import WebKit
 import PDFKit
+import UniformTypeIdentifiers
 import MarknoteCore
 
 /// Invoked explicitly by Scripts/smoke-test.sh; uses the same document, editor and WebKit as the app.
@@ -41,6 +42,9 @@ import MarknoteCore
                 requestedTypes.append(type.identifier)
             }
             try check(requestedTypes == markdownTypes.map(\.identifier), "默认打开方式依次设置去重后的 Markdown 类型")
+            let mdxType = UTType(filenameExtension: "mdx")
+            try check(mdxType?.isDeclared == true && requestedTypes.contains(mdxType?.identifier ?? ""), "MDX 类型已注册并包含在默认打开方式中")
+            try await verifyDirectoryTabs(in: directory) { try check($0, $1) }
             var caughtFailure = false
             do {
                 try await MarkdownFileAssociation.setDefault { _, _ in throw Failure(message: "Simulated system refusal") }
@@ -174,6 +178,105 @@ import MarknoteCore
             fputs(message, stderr)
             exit(1)
         }
+    }
+
+    private static func verifyDirectoryTabs(in directory: URL, check: (Bool, String) throws -> Void) async throws {
+        let folder = directory.appendingPathComponent("Workspace", isDirectory: true)
+        let nested = folder.appendingPathComponent("Guides", isDirectory: true)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent("Empty"), withIntermediateDirectories: true)
+        let firstURL = folder.appendingPathComponent("README.md")
+        let mdxURL = nested.appendingPathComponent("intro_zh.mdx")
+        let source = "---\nslug: /\nsidebar_position: 1\n---\n\nimport Callout from './Callout'\n\n# AI Cloud 文档\n\n<Callout>中文与 emoji 🌱</Callout>\n"
+        try "# Project notes\n\nOne folder, several documents.\n".write(to: firstURL, atomically: true, encoding: .utf8)
+        try source.write(to: mdxURL, atomically: true, encoding: .utf8)
+        try "Notes".write(to: folder.appendingPathComponent("notes.txt"), atomically: true, encoding: .utf8)
+        try Data([0, 255]).write(to: folder.appendingPathComponent("image.png"))
+        try "Hidden".write(to: folder.appendingPathComponent(".hidden.md"), atomically: true, encoding: .utf8)
+        let first = try await openDocument(firstURL)
+        defer {
+            for document in documentController.documents where document.fileURL?.path.hasPrefix(folder.path + "/") == true {
+                document.updateChangeCount(.changeCleared)
+                document.close()
+            }
+        }
+        let controller = first.windowControllers.first as! EditorWindowController
+        let tree = controller.directoryTree.tree
+        try check(controller.directoryTree.workspace?.rootURL == folder.standardizedFileURL, "文件目录树默认使用当前文稿所在文件夹")
+        func names(_ tree: NSOutlineView) -> [String] {
+            (0..<tree.numberOfRows).compactMap { (tree.item(atRow: $0) as? DirectoryTreeView.Node)?.url.lastPathComponent }
+        }
+        try check(names(tree) == ["Empty", "Guides", "notes.txt", "README.md"], "目录树按文件夹优先排序，显示文本文件并过滤隐藏文件和二进制文件")
+        let guides = tree.item(atRow: 1)!
+        tree.expandItem(guides)
+        try check(names(tree).contains("intro_zh.mdx"), "目录树展开子文件夹并显示 MDX 文件")
+        let mdxRow = names(tree).firstIndex(of: "intro_zh.mdx")!
+        tree.selectRowIndexes(IndexSet(integer: mdxRow), byExtendingSelection: false)
+        try check(tree.sendAction(tree.action!, to: tree.target), "点击目录树文件触发打开操作")
+        for _ in 0..<50 {
+            if controller.window?.tabbedWindows?.count == 2 { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        guard let mdx = documentController.document(for: mdxURL) as? MarkdownDocument,
+              let mdxController = mdx.windowControllers.first as? EditorWindowController else { throw Failure(message: "目录树未打开 MDX 文稿") }
+        try check(controller.window?.tabbedWindows?.count == 2 && mdxController.window?.tabGroup?.selectedWindow === mdxController.window, "目录树文件在同一窗口新标签页中打开并选中")
+        try check(mdxController.directoryTree.workspace === controller.directoryTree.workspace && names(mdxController.directoryTree.tree).contains("intro_zh.mdx"), "标签页共享项目根目录及文件夹展开状态")
+        try check(mdx.text == source, "MDX 原文、front matter、import 和 JSX 完整载入")
+        let editor = mdxController.editor
+        editor.setSelectedRange(NSRange(location: editor.string.utf16.count, length: 0))
+        editor.insertText("\n## 修改内容\n", replacementRange: editor.selectedRange())
+        try await settleEditing(editor, document: mdx)
+        let edited = mdx.text
+        let selection = editor.selectedRange()
+        _ = try await mdxController.openFileInTab(firstURL)
+        let reused = try await controller.openFileInTab(mdxURL)
+        try check(reused === mdxController && controller.window?.tabbedWindows?.count == 2 && mdx.text == edited && editor.selectedRange() == selection, "重复打开切换已有标签页，保留未保存内容与选区")
+        editor.undoManager?.undo()
+        try await settleEditing(editor, document: mdx)
+        try check(mdx.text == source && first.text.hasPrefix("# Project notes"), "切换标签页后撤销只影响当前文稿")
+        editor.undoManager?.redo()
+        try await settleEditing(editor, document: mdx)
+        try await save(mdx, to: mdxURL)
+        try check(try String(contentsOf: mdxURL, encoding: .utf8) == edited && mdx.fileURL == mdxURL, "MDX 保存保留内容与原扩展名")
+        editor.insertText("自动保存\n", replacementRange: editor.selectedRange())
+        try await settleEditing(editor, document: mdx)
+        try await autosave(mdx)
+        try check(try String(contentsOf: mdxURL, encoding: .utf8) == mdx.text && !FileManager.default.fileExists(atPath: nested.appendingPathComponent("intro_zh.md").path), "MDX 自动保存写回原文件，不产生 .md 副本")
+        let added = folder.appendingPathComponent("added.mdx")
+        try "# Added".write(to: added, atomically: true, encoding: .utf8)
+        controller.directoryTree.refresh()
+        try check(names(tree).contains("added.mdx") && names(tree).contains("intro_zh.mdx"), "刷新目录树发现新增文件并保留展开状态")
+        try FileManager.default.removeItem(at: added)
+        controller.directoryTree.refresh()
+        try check(!names(tree).contains("added.mdx"), "刷新目录树移除已删除文件")
+        mdxController.newWindowForTab(nil)
+        guard let draftWindow = mdxController.window?.tabGroup?.selectedWindow,
+              let draftController = draftWindow.windowController as? EditorWindowController,
+              draftController !== mdxController else { throw Failure(message: "未创建新标签页") }
+        let draft = draftController.documentModel
+        try check(draft.fileURL == nil && draftController.directoryTree.workspace === controller.directoryTree.workspace, "新建标签页创建独立草稿并保留项目目录")
+        draftController.editor.insertText("未保存的标签页", replacementRange: NSRange(location: 0, length: 0))
+        try await settleEditing(draftController.editor, document: draft)
+        draftWindow.performClose(nil)
+        try await Task.sleep(nanoseconds: 250_000_000)
+        try check(draftWindow.attachedSheet != nil, "关闭未保存标签页显示系统保存提示")
+        if let sheet = draftWindow.attachedSheet { draftWindow.endSheet(sheet, returnCode: .cancel) }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        try check(draft.text == "未保存的标签页" && mdx.text.contains("自动保存"), "取消关闭保留草稿及其他标签页内容")
+        draft.updateChangeCount(.changeCleared)
+        draft.close()
+        _ = try await controller.openFileInTab(mdxURL)
+        mdxController.window?.setContentSize(NSSize(width: 1220, height: 800))
+        try await waitForPreview(mdxController)
+        try await screenshot(mdxController, to: directory.appendingPathComponent("workspace-tabs.png"))
+        L10n.shared.select(.english)
+        mdxController.window?.appearance = NSAppearance(named: .darkAqua)
+        try await waitForPreview(mdxController)
+        try await screenshot(mdxController, to: directory.appendingPathComponent("workspace-tabs-dark.png"))
+        L10n.shared.select(.simplifiedChinese)
+        let differentWorkspace = DirectoryWorkspace(rootURL: nested)
+        mdxController.setWorkspace(differentWorkspace)
+        try check(controller.directoryTree.workspace === differentWorkspace && mdxController.directoryTree.workspace === differentWorkspace, "切换项目文件夹同步更新同组全部标签页")
     }
 
     private static func verifyLanguageAndPanes(document: MarkdownDocument, controller: EditorWindowController, directory: URL, check: (Bool, String) throws -> Void) async throws {
@@ -338,7 +441,7 @@ import MarknoteCore
         defer { document.updateChangeCount(.changeCleared); document.close() }
         let controller = document.windowControllers.first as! EditorWindowController
         func table(in view: NSView) -> NSTableView? {
-            if let table = view as? NSTableView { return table }
+            if let table = view as? NSTableView, !(table is NSOutlineView) { return table }
             return view.subviews.lazy.compactMap { table(in: $0) }.first
         }
         guard let outline = table(in: controller.window!.contentView!), let action = outline.action else {
@@ -629,7 +732,7 @@ import MarknoteCore
 
     private static func save(_ document: MarkdownDocument, to url: URL) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            document.save(to: url, ofType: MarkdownDocument.typeName, for: .saveOperation) { error in
+            document.save(to: url, ofType: document.fileType ?? MarkdownDocument.typeName, for: .saveOperation) { error in
                 if let error { continuation.resume(throwing: error) } else { continuation.resume() }
             }
         }

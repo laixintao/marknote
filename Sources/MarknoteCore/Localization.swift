@@ -61,8 +61,12 @@ public final class LocalizationStore: NSObject {
     }
 
     public static func bundle(for language: AppLanguage) -> Bundle? {
-        // SwiftPM lowercases localization directory names (for example, zh-hans.lproj).
-        AppResources.bundle.url(forResource: language.rawValue.lowercased(), withExtension: "lproj").flatMap(Bundle.init(url:))
+        // SwiftPM's native and Xcode build systems differ in localization path casing.
+        // Resolve the actual directory instead of relying on Bundle's language fallback.
+        guard let resources = AppResources.bundle.resourceURL else { return nil }
+        return [language.rawValue, language.rawValue.lowercased()].lazy.compactMap {
+            Bundle(url: resources.appendingPathComponent($0 + ".lproj", isDirectory: true))
+        }.first
     }
 }
 
@@ -76,6 +80,7 @@ public enum L10n {
         case defaultEditor, defaultEditorDone, defaultEditorMessage, defaultEditorFailed, installFirst, installFirstMessage
         case services, hideApp, hideOthers, showAll, quit
         case menuFile, newDocument, open, openRecent, close, save, saveAs, revert, exportHTML, exportPDF
+        case openFolder, newTab, sidebar, files, folderHint, folderEmpty, refreshFiles, nextTab, previousTab
         case menuEdit, undo, redo, cut, copy, paste, selectAll, find
         case menuFormat, bold, italic, insertLink, heading, list, task, quote, code, table
         case menuView, outline, editorOnly, splitView, previewOnly, focus, increaseFont, decreaseFont, fullScreen

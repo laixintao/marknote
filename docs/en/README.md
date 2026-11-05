@@ -39,7 +39,7 @@ The app is generated at `dist/墨笺.app`. For a debug build, use `make build CO
 
 ## Open Markdown files by default
 
-After installing, choose **Marknote → Set as Default Markdown Editor…** and approve any macOS prompt. Double-clicking `.md`, `.markdown`, `.mdown`, and `.mkd` files will then open them in Marknote. General text files such as `.txt` keep their current default app. The setting is applied only when you choose this command; running from the read-only installer prompts you to install first.
+After installing, choose **Marknote → Set as Default Markdown Editor…** and approve any macOS prompt. Double-clicking `.md`, `.mdx`, `.markdown`, `.mdown`, and `.mkd` files will then open them in Marknote. General text files such as `.txt` keep their current default app. The setting is applied only when you choose this command; running from the read-only installer prompts you to install first.
 
 You can also use Finder: select a `.md` file → **Get Info** (`⌘I`) → **Open with** → choose **Marknote** → **Change All…**. This is also how you switch back to a different editor. A file with its own custom Open With setting may need to be changed individually.
 
@@ -47,9 +47,15 @@ You can also use Finder: select a `.md` file → **Get Info** (`⌘I`) → **Ope
 
 The first launch opens an editable guide. Open it again from Help → Marknote User Guide. Use `⌘N` for a new document and `⌘O` to open a file.
 
-Supported files include UTF-8 `.md`, `.markdown`, `.mdown`, `.mkd`, and plain text. UTF-8 byte-order marks are removed when reading. New documents need a location on their first save. Existing documents use NSDocument autosave in place; you can also press `⌘S`. Closing a document with unsaved changes prompts you to save, and Cancel returns to editing.
+Supported files include UTF-8 `.md`, `.mdx`, `.markdown`, `.mdown`, `.mkd`, and plain text. MDX files retain their source and extension; the preview renders Markdown without executing JSX components. UTF-8 byte-order marks are removed when reading. New documents need a location on their first save. Existing documents use NSDocument autosave in place; you can also press `⌘S`. Closing a document with unsaved changes prompts you to save, and Cancel returns to editing.
 
-Documents have separate windows and support system tabs. Switching language or layout preserves the editor, text, selection, and undo history.
+### Folders and tabs
+
+![Project directory tree and native document tabs](../images/product-workspace.png)
+
+The sidebar shows a directory tree above the current document's outline. Opening a file starts the tree in its containing folder. Choose **File → Open Folder…** (`⌥⌘O`) or the folder button to browse a project. Expand folders with their disclosure arrows; click a file or press Return to open it in a tab. The tree shows Markdown, MDX, and `.txt` files, skips hidden files and app packages, and loads folders as you expand them. Use the refresh button after changing files outside the app; the tree also refreshes when its window becomes active.
+
+Tabs in the same window share the project folder and expanded directories. Opening a file that's already open selects its existing tab. **File → New Tab** (`⌘T`) creates an independent draft, `⇧⌘]` / `⇧⌘[` switches tabs, and `⌘W` closes the current tab with the usual save prompt. Each document retains its own edits, selection, undo history, and autosave. Switching language or layout preserves those states. Hide or show the whole sidebar with `⌥⌘0`.
 
 ## Edit, preview, and focus
 
